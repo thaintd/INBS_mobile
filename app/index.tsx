@@ -1,25 +1,106 @@
-import { View, Text, Button, StyleSheet, Image, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, Image, Animated, Dimensions } from "react-native";
 import { useRouter } from "expo-router";
 import colors from "@/assets/colors/colors";
+import { useEffect, useRef } from "react";
+
+const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get("window");
+const FLOWER_SIZE = 20;
+const NUMBER_OF_FLOWERS = 30;
+const FLOWER_EMOJIS = ["💅", "✨", "🌸", "🎀"];
+
+function FlowerFall() {
+  const flowers = [...Array(NUMBER_OF_FLOWERS)].map(() => ({
+    translateY: new Animated.Value(-FLOWER_SIZE),
+    translateX: new Animated.Value(Math.random() * SCREEN_WIDTH),
+    rotate: new Animated.Value(0),
+    opacity: new Animated.Value(0.4 + Math.random() * 0.6),
+    emoji: FLOWER_EMOJIS[Math.floor(Math.random() * FLOWER_EMOJIS.length)]
+  }));
+
+  useEffect(() => {
+    flowers.forEach((flower) => {
+      const duration = 6000 + Math.random() * 4000;
+      const delay = Math.random() * 5000;
+
+      Animated.loop(
+        Animated.sequence([
+          Animated.parallel([
+            Animated.timing(flower.translateY, {
+              toValue: SCREEN_HEIGHT,
+              duration,
+              useNativeDriver: true,
+              delay
+            }),
+            Animated.timing(flower.rotate, {
+              toValue: 360,
+              duration: duration * 1.2,
+              useNativeDriver: true,
+              delay
+            })
+          ]),
+          Animated.timing(flower.translateY, {
+            toValue: -FLOWER_SIZE,
+            duration: 0,
+            useNativeDriver: true
+          })
+        ])
+      ).start();
+    });
+  }, []);
+
+  return (
+    <>
+      {flowers.map((flower, index) => (
+        <Animated.View
+          key={index}
+          style={[
+            styles.flower,
+            {
+              transform: [
+                { translateY: flower.translateY },
+                { translateX: flower.translateX },
+                {
+                  rotate: flower.rotate.interpolate({
+                    inputRange: [0, 360],
+                    outputRange: ["0deg", "360deg"]
+                  })
+                }
+              ],
+              opacity: flower.opacity
+            }
+          ]}
+        >
+          <Text style={styles.flowerEmoji}>{flower.emoji}</Text>
+        </Animated.View>
+      ))}
+    </>
+  );
+}
 
 export default function Welcome() {
   const router = useRouter();
 
-  const handleNavigateToSignIn = () => {
-    router.push("/signin");
-  };
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      router.push("/signin");
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>The Hands</Text>
-      <Image source={require("../assets/images/nail.png")} style={styles.image} />
-      <View style={styles.subtitleContainer}>
-        <Text style={styles.subtitle}>Fast nail appointment</Text>
-        <Text style={styles.subtitle}>booking service</Text>
+      <FlowerFall />
+      <View style={styles.mainContent}>
+        <View style={styles.logoContainer}>
+          <Image source={require("../assets/images/image 6.png")} style={styles.image} />
+        </View>
+        <View style={styles.textContainer}>
+          <Text style={styles.brandName}>INBS</Text>
+          <Text style={styles.slogan}>Nail Beauty Service</Text>
+          <Text style={styles.subSlogan}>Professional • Luxury • Convenience</Text>
+        </View>
       </View>
-      <TouchableOpacity style={styles.joinButton} onPress={handleNavigateToSignIn}>
-        <Text style={styles.joinButtonText}>Join with us</Text>
-      </TouchableOpacity>
     </View>
   );
 }
@@ -27,47 +108,56 @@ export default function Welcome() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.third,
-    padding: 16
+    backgroundColor: colors.third
   },
-  title: {
-    marginTop: 64,
-    fontSize: 36,
-    fontWeight: "bold",
-    marginBottom: 16,
-    color: colors.first
+  mainContent: {
+    flex: 1,
+    alignItems: "center",
+    paddingTop: "15%",
+    marginTop: 150
+  },
+  logoContainer: {
+    width: "100%",
+    alignItems: "center",
+    height: 150,
+    overflow: "hidden"
   },
   image: {
-    width: 50,
-    height: 50,
-    alignSelf: "center",
-    marginBottom: 16
+    width: 300,
+    height: 300,
+    resizeMode: "contain",
+    marginTop: -40
   },
-  subtitleContainer: {
-    flexDirection: "column"
+  textContainer: {
+    alignItems: "center",
+    gap: 12,
+    marginTop: -20
   },
-  subtitle: {
-    fontSize: 24,
-    color: colors.sixth,
-    fontWeight: "bold"
+  brandName: {
+    fontSize: 36,
+    color: colors.fifth,
+    letterSpacing: 10,
+    fontWeight: "600"
   },
-  joinButton: {
+  slogan: {
+    fontSize: 20,
+    color: colors.fifth,
+    letterSpacing: 2
+  },
+  subSlogan: {
+    fontSize: 14,
+    color: colors.fifth,
+    opacity: 0.8,
+    letterSpacing: 1
+  },
+  flower: {
     position: "absolute",
-    bottom: 16,
-    right: 16,
-    backgroundColor: colors.first,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5
+    width: FLOWER_SIZE,
+    height: FLOWER_SIZE,
+    justifyContent: "center",
+    alignItems: "center"
   },
-  joinButtonText: {
-    color: colors.third,
-    fontWeight: "bold",
-    fontSize: 16
+  flowerEmoji: {
+    fontSize: FLOWER_SIZE
   }
 });

@@ -31,7 +31,7 @@ const nailDesigns: NailDesign[] = [
     duration: "1.5h",
     popularity: "89 clients love this",
     location: "District 3, HCMC",
-    image: require("../../assets/images/sample.jpg")
+    image: require("../../assets/images/sample2.jpg")
   },
   {
     id: 3,
@@ -40,7 +40,7 @@ const nailDesigns: NailDesign[] = [
     duration: "2h",
     popularity: "128 clients love this",
     location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
+    image: require("../../assets/images/sample3.jpg")
   },
   {
     id: 4,
@@ -49,7 +49,7 @@ const nailDesigns: NailDesign[] = [
     duration: "2h",
     popularity: "128 clients love this",
     location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
+    image: require("../../assets/images/sample4.jpg")
   },
   {
     id: 5,
@@ -75,6 +75,9 @@ export default function Nails() {
     <View style={styles.container}>
       {/* Header with Search and Filter */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Ionicons name="chevron-back-circle-outline" size={28} color={colors.fifth} />
+        </TouchableOpacity>
         <View style={styles.searchContainer}>
           <Ionicons name="search-outline" size={20} color={colors.fifth} />
           <TextInput style={styles.searchInput} placeholder="Search nail designs..." placeholderTextColor={`${colors.fifth}80`} />
@@ -94,7 +97,7 @@ export default function Nails() {
 
         <View style={styles.gridContainer}>
           {nailDesigns.map((design) => (
-            <TouchableOpacity key={design.id} style={styles.nailCard}>
+            <TouchableOpacity key={design.id} style={styles.nailCard} onPress={() => router.push("./nails/[1]")}>
               <Image source={design.image} style={styles.nailImage} />
               <View style={styles.nailInfo}>
                 <Text style={styles.nailName} numberOfLines={1}>

@@ -2,14 +2,14 @@ import { Tabs } from "expo-router";
 import React, { useState } from "react";
 import { Ionicons } from "@expo/vector-icons";
 import { View } from "react-native";
-import colors from "@/assets/colors/colors"; // Import colors
+import colors from "@/assets/colors/colors";
 
-const tabsData: { name: string; title: string; icon: "home" | "list" | "person" | "heart" | "settings" }[] = [
+const tabsData: { name: string; title: string; icon: "home" | "hand-left" | "person" | "heart" | "time" }[] = [
   { name: "index", title: "Home", icon: "home" },
-  { name: "fourth", title: "Fourth", icon: "list" },
+  { name: "fourth", title: "Nail", icon: "hand-left" },
   { name: "profile", title: "Profile", icon: "person" },
   { name: "favorite", title: "Favorite", icon: "heart" },
-  { name: "fifth", title: "Fifth", icon: "settings" }
+  { name: "fifth", title: "Schedule", icon: "time" }
 ];
 
 export default function TabLayout() {
@@ -19,14 +19,29 @@ export default function TabLayout() {
   reorderedTabs.splice(2, 0, tabsData.find((tab) => tab.name === selectedTab) || tabsData[0]);
 
   return (
-    <Tabs screenOptions={{ headerShown: false }}>
+    <Tabs
+      screenOptions={{
+        headerShown: false,
+        tabBarActiveTintColor: colors.fifth,
+        tabBarInactiveTintColor: `${colors.fifth}80`,
+        tabBarLabelStyle: {
+          fontSize: 12,
+          fontWeight: "500"
+        },
+        tabBarStyle: {
+          backgroundColor: colors.first,
+          height: 55,
+          paddingBottom: 10
+        }
+      }}
+    >
       {reorderedTabs.map((tab, index) => (
         <Tabs.Screen
           key={tab.name}
           name={tab.name}
           options={{
             title: tab.title,
-            tabBarLabel: "",
+            tabBarLabel: tab.title,
             tabBarIcon: ({ color, size }) => (
               <View
                 style={{
@@ -42,10 +57,7 @@ export default function TabLayout() {
               >
                 <Ionicons name={tab.icon} size={size} color={selectedTab === tab.name ? colors.fifth : colors.fifth} />
               </View>
-            ),
-            tabBarStyle: {
-              backgroundColor: colors.first
-            }
+            )
           }}
           listeners={{
             tabPress: () => setSelectedTab(tab.name)

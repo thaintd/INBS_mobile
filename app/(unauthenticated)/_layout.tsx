@@ -11,7 +11,7 @@ export default function AuthLayout() {
   return (
     <Stack
       screenOptions={{
-        headerShown: true,
+        headerShown: false,
         headerStyle: {
           backgroundColor: colors.third
         },
@@ -26,8 +26,7 @@ export default function AuthLayout() {
           <TouchableOpacity onPress={() => router.back()}>
             <Ionicons name="arrow-back-circle-outline" size={32} color={colors.fifth} />
           </TouchableOpacity>
-        ),
-        headerTitle: () => <Text style={{ color: colors.fifth, fontWeight: "bold", fontSize: 24 }}>{pathname === "/signin" ? "Sign In" : "Sign Up"}</Text>
+        )
       }}
     />
   );

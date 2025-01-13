@@ -1,81 +1,159 @@
-import { View, Text, TextInput, TouchableOpacity, StyleSheet } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Image, KeyboardAvoidingView, Platform } from "react-native";
 import { useRouter } from "expo-router";
 import colors from "@/assets/colors/colors";
+import { Ionicons } from "@expo/vector-icons";
 
 export default function SignIn() {
   const router = useRouter();
-
-  const handleSignIn = () => {
-    // Thêm logic đăng nhập ở đây
-    router.push("/(authenticated)");
-  };
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   return (
-    <View style={styles.container}>
-      <View style={styles.inputContainer}>
-        <Ionicons name="call-outline" size={24} style={[styles.icon, { color: colors.fifth }]} />
-        <TextInput placeholder="Phone" placeholderTextColor={colors.fifth} style={[styles.input, { color: colors.fifth }]} />
+    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+      <View style={styles.logoContainer}>
+        <Image source={require("../../assets/images/newlogo.png")} style={styles.logo} />
+        <Text style={styles.slogan}>Nail Beauty Service</Text>
       </View>
-      <View style={styles.inputContainer}>
-        <Ionicons name="lock-closed-outline" size={24} style={[styles.icon, { color: colors.fifth }]} />
-        <TextInput placeholder="Password" secureTextEntry placeholderTextColor={colors.fifth} style={[styles.input, { color: colors.fifth }]} />
+
+      <View style={styles.formContainer}>
+        <View style={styles.inputContainer}>
+          <Ionicons name="call-outline" size={20} color={colors.fifth} />
+          <TextInput style={styles.input} placeholder="Phone" placeholderTextColor={`${colors.fifth}80`} value={email} onChangeText={setEmail} autoCapitalize="none" />
+        </View>
+
+        <View style={styles.inputContainer}>
+          <Ionicons name="lock-closed-outline" size={20} color={colors.fifth} />
+          <TextInput style={styles.input} placeholder="Password" placeholderTextColor={`${colors.fifth}80`} value={password} onChangeText={setPassword} secureTextEntry={!showPassword} />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons name={showPassword ? "eye-outline" : "eye-off-outline"} size={20} color={colors.fifth} />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.forgotPassword}>
+          <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.signInButton} onPress={() => router.push("/(authenticated)")}>
+          <Text style={styles.signInText}>Sign In</Text>
+        </TouchableOpacity>
+
+        <View style={styles.divider}>
+          <View style={styles.line} />
+          <Text style={styles.orText}>OR</Text>
+          <View style={styles.line} />
+        </View>
+
+        <TouchableOpacity style={styles.signUpButton} onPress={() => router.push("/signup")}>
+          <Text style={styles.signUpText}>Create New Account</Text>
+        </TouchableOpacity>
       </View>
-      <Text onPress={() => router.push("/signup")} style={styles.forgotPassword}>
-        Forgot password?
-      </Text>
-      <TouchableOpacity style={styles.button} onPress={handleSignIn}>
-        <Text style={styles.buttonText}>Sign In</Text>
-      </TouchableOpacity>
-      <Text style={styles.signupText} onPress={() => router.push("/signup")}>
-        Don't have an account? Sign Up
-      </Text>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
-    padding: 16
+    backgroundColor: colors.third,
+    padding: 20
+  },
+  logoContainer: {
+    alignItems: "center",
+
+    marginBottom: 40
+  },
+  logo: {
+    width: 150,
+    height: 150,
+    resizeMode: "contain"
+  },
+  brandName: {
+    fontSize: 32,
+    fontWeight: "600",
+    color: colors.fifth,
+    letterSpacing: 8
+  },
+  slogan: {
+    fontSize: 16,
+    color: colors.fifth,
+    marginTop: 8,
+    letterSpacing: 1
+  },
+  formContainer: {
+    flex: 1
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "center",
-    borderBottomWidth: 1,
-    borderBottomColor: colors.sixth,
-    marginBottom: 16
-  },
-  icon: {
-    marginRight: 10
+    backgroundColor: `${colors.fifth}10`,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    height: 50,
+    borderWidth: 1,
+    borderColor: `${colors.fifth}20`
   },
   input: {
     flex: 1,
-    height: 48,
-    fontSize: 20
+    color: colors.fifth,
+    marginLeft: 12,
+    fontSize: 16
   },
   forgotPassword: {
-    color: colors.fifth,
-    marginBottom: 16,
-    textAlign: "center",
-    fontSize: 16
+    alignItems: "flex-end",
+    marginBottom: 24
   },
-  signupText: {
-    marginTop: 16,
+  forgotPasswordText: {
     color: colors.fifth,
-    textAlign: "center",
-    fontSize: 16
+    fontSize: 14
   },
-  button: {
+  signInButton: {
     backgroundColor: colors.fifth,
-    paddingVertical: 12,
-    borderRadius: 20,
-    alignItems: "center"
+    borderRadius: 12,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 24,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3
   },
-  buttonText: {
+  signInText: {
     color: colors.sixth,
     fontSize: 16,
-    fontWeight: "bold"
+    fontWeight: "600"
+  },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 24
+  },
+  line: {
+    flex: 1,
+    height: 1,
+    backgroundColor: colors.fourth
+  },
+  orText: {
+    color: colors.fifth,
+    marginHorizontal: 16,
+    fontSize: 14
+  },
+  signUpButton: {
+    borderWidth: 1,
+    borderColor: colors.fifth,
+    borderRadius: 12,
+    height: 50,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: `${colors.fifth}10`
+  },
+  signUpText: {
+    color: colors.fifth,
+    fontSize: 16,
+    fontWeight: "500"
   }
 });
