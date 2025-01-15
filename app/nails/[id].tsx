@@ -59,11 +59,9 @@ export default function ServiceDetail() {
 
           <View style={styles.infoContainer}>
             {/* Duration */}
-            <View style={styles.infoItem}>
-              <View style={styles.iconContainer}>
-                <Ionicons name="time-outline" size={20} color={colors.fifth} />
-              </View>
-              <Text style={styles.infoText}>{service.duration}</Text>
+            <View style={styles.descriptionContainer}>
+              <Text style={styles.sectionTitle}>Duration</Text>
+              <Text style={styles.description}>{service.duration}</Text>
             </View>
 
             {/* Shape */}
@@ -136,7 +134,7 @@ export default function ServiceDetail() {
           }
         >
           <Ionicons name="calendar-outline" size={20} color={colors.sixth} />
-          <Text style={styles.actionButtonText}>Book Now</Text>
+          <Text style={styles.actionButtonText}>Continue</Text>
         </TouchableOpacity>
       </View>
     </View>

@@ -71,7 +71,7 @@ export default function AdditionalServices() {
 
         {/* Service Type Selection */}
         <View style={styles.typeSection}>
-          <Text style={styles.sectionTitle}>Choose Your Package</Text>
+          <Text style={styles.sectionTitle}>Choose Combo</Text>
           {serviceTypes.map((type) => (
             <TouchableOpacity key={type.id} style={[styles.typeCard, selectedType === type.id && styles.selectedTypeCard]} onPress={() => setSelectedType(type.id)}>
               <View style={styles.typeHeader}>
