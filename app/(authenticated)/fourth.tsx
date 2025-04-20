@@ -1,66 +1,69 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Modal } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "@/assets/colors/colors";
 import { router } from "expo-router";
+import { designService } from "@/services/nailDesign";
 
 interface NailDesign {
-  id: number;
-  name: string;
-  price: string;
-  duration: string;
-  popularity: string;
-  location: string;
-  image: any;
+  Name: string;
+  TrendScore: number;
+  AverageRating: number;
+  ID: string;
+  Medias: Medias[];
 }
 
-const nailDesigns: NailDesign[] = [
-  {
-    id: 1,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  },
-  {
-    id: 2,
-    name: "French Manicure Classic",
-    price: "280,000đ",
-    duration: "1.5h",
-    popularity: "89 clients love this",
-    location: "District 3, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  },
-  {
-    id: 3,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  },
-  {
-    id: 4,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  },
-  {
-    id: 5,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  }
-];
+interface Medias {
+  ImageUrl: string;
+}
+
+// const nailDesigns: NailDesign[] = [
+//   {
+//     id: 1,
+//     name: "Pink Gradient Design",
+//     price: "350,000đ",
+//     duration: "2h",
+//     popularity: "128 clients love this",
+//     location: "District 1, HCMC",
+//     image: require("../../assets/images/sample.jpg")
+//   },
+//   {
+//     id: 2,
+//     name: "French Manicure Classic",
+//     price: "280,000đ",
+//     duration: "1.5h",
+//     popularity: "89 clients love this",
+//     location: "District 3, HCMC",
+//     image: require("../../assets/images/sample2.jpg")
+//   },
+//   {
+//     id: 3,
+//     name: "Pink Gradient Design",
+//     price: "350,000đ",
+//     duration: "2h",
+//     popularity: "128 clients love this",
+//     location: "District 1, HCMC",
+//     image: require("../../assets/images/sample3.jpg")
+//   },
+//   {
+//     id: 4,
+//     name: "Pink Gradient Design",
+//     price: "350,000đ",
+//     duration: "2h",
+//     popularity: "128 clients love this",
+//     location: "District 1, HCMC",
+//     image: require("../../assets/images/sample4.jpg")
+//   },
+//   {
+//     id: 5,
+//     name: "Pink Gradient Design",
+//     price: "350,000đ",
+//     duration: "2h",
+//     popularity: "128 clients love this",
+//     location: "District 1, HCMC",
+//     image: require("../../assets/images/sample.jpg")
+//   }
+// ];
 
 const occasions = ["Christmas", "Birthday", "Wedding", "Valentine", "Anniversary", "Graduation"];
 const priceRanges = ["Under 300k", "300k - 500k", "500k - 1000k", "Over 1000k"];
@@ -69,12 +72,36 @@ const sortOptions = ["Price: Low to High", "Price: High to Low", "Name A-Z", "Na
 
 export default function Nails() {
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [nailDesigns, setNailDesigns] = useState<NailDesign[]>([]);
   const [selectedSort, setSelectedSort] = useState<string>("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const handleGetNailDesign = async () => {
+      try {
+        setLoading(true);
+        const res = await designService.getNailDesigns();
+        if (Array.isArray(res)) {
+          setNailDesigns(res);
+        } else {
+          console.error("Unexpected response format:", res);
+        }
+      } catch (error) {
+        console.error("Failed to load nail design:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleGetNailDesign();
+  }, []);
 
   return (
     <View style={styles.container}>
       {/* Header with Search and Filter */}
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace("/nails")}>
+          <Ionicons name="chevron-back-circle-outline" size={28} color={colors.fifth} />
+        </TouchableOpacity>
         <View style={styles.searchContainer}>
           <Ionicons name="search-outline" size={20} color={colors.fifth} />
           <TextInput style={styles.searchInput} placeholder="Search nail designs..." placeholderTextColor={`${colors.fifth}80`} />
@@ -94,28 +121,31 @@ export default function Nails() {
 
         <View style={styles.gridContainer}>
           {nailDesigns.map((design) => (
-            <TouchableOpacity key={design.id} style={styles.nailCard}>
-              <Image source={design.image} style={styles.nailImage} />
+            <TouchableOpacity key={design.ID} style={styles.nailCard} onPress={() => router.replace(`/nails/${design.ID}`)}>
+              <Image
+                source={{
+                  uri: design.Medias[0]?.ImageUrl || "https://firebasestorage.googleapis.com/v0/b/fir-realtime-database-49344.appspot.com/o/images%2Fnoimage.jpg?alt=media&token=8ffe560a-6aeb-4a34-8ebc-16693bb10a56&fbclid=IwY2xjawJJERpleHRuA2FlbQIxMAABHfHAoOuBqoR8wcxGYpyXgOUtSMbJ8Pr68s2NIHEAej3f-T6w8AyBaluMqg_aem_RGb79TPRss_OmtwOKp27aA"
+                }}
+                style={styles.nailImage}
+              />
               <View style={styles.nailInfo}>
-                <Text style={styles.nailName} numberOfLines={1}>
-                  {design.name}
-                </Text>
-                <Text style={styles.nailPrice}>{design.price}</Text>
+                <View style={styles.nailHeader}>
+                  <Ionicons name="color-palette-outline" size={16} color={colors.fifth} />
+                  <Text style={styles.nailName} numberOfLines={1}>
+                    {design.Name}
+                  </Text>
+                </View>
                 <View style={styles.nailDetails}>
                   <View style={styles.detailItem}>
-                    <Ionicons name="time-outline" size={14} color={colors.fifth} />
-                    <Text style={styles.detailText}>{design.duration}</Text>
-                  </View>
-                  <View style={styles.popularityContainer}>
                     <Ionicons name="heart-outline" size={14} color={colors.fifth} />
-                    <Text style={styles.popularityText}>{design.popularity}</Text>
+                    <Text style={styles.detailLabel}>Trend:</Text>
+                    <Text style={styles.detailValue}>{design.TrendScore}</Text>
                   </View>
-                </View>
-                <View style={styles.locationContainer}>
-                  <Ionicons name="location-outline" size={14} color={colors.fifth} />
-                  <Text style={styles.locationText} numberOfLines={1}>
-                    {design.location}
-                  </Text>
+                  <View style={styles.detailItem}>
+                    <Ionicons name="star-outline" size={14} color={colors.fifth} />
+                    <Text style={styles.detailLabel}>Rating:</Text>
+                    <Text style={styles.detailValue}>{design.AverageRating}</Text>
+                  </View>
                 </View>
               </View>
             </TouchableOpacity>
@@ -210,7 +240,7 @@ export default function Nails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.seventh
+    backgroundColor: colors.sixth
   },
   header: {
     flexDirection: "row",
@@ -240,8 +270,8 @@ const styles = StyleSheet.create({
     justifyContent: "space-between" // Tạo khoảng cách đều giữa các cột
   },
   nailCard: {
-    width: "48%", // Đảm bảo 2 cột với khoảng cách giữa các card
-    backgroundColor: colors.fourth,
+    width: "48%",
+    backgroundColor: colors.third,
     borderRadius: 12,
     overflow: "hidden",
     shadowColor: "#000",
@@ -249,7 +279,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    marginBottom: 16 // Khoảng cách giữa các hàng
+    marginBottom: 16
   },
   nailImage: {
     width: "100%",
@@ -257,56 +287,43 @@ const styles = StyleSheet.create({
     resizeMode: "cover"
   },
   nailInfo: {
-    padding: 10
+    padding: 12
+  },
+  nailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8
   },
   nailName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.fifth,
-    marginBottom: 4
-  },
-  nailPrice: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: "700",
-    color: colors.fifth,
-    marginBottom: 8
+    fontWeight: "600",
+    color: colors.eigth
   },
   nailDetails: {
     flexDirection: "column",
-    gap: 8,
-    marginBottom: 8
+    gap: 8
   },
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4
-  },
-  detailText: {
-    fontSize: 12,
-    color: colors.fifth
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4
-  },
-  locationText: {
-    fontSize: 12,
-    color: colors.fifth,
-    flex: 1
-  },
-  popularityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 4,
-    backgroundColor: `${colors.fifth}10`,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8
+    backgroundColor: `${colors.eigth}10`,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start"
   },
-  popularityText: {
-    fontSize: 11,
-    color: colors.fifth
+  detailLabel: {
+    fontSize: 12,
+    color: colors.eigth,
+    fontWeight: "500"
+  },
+  detailValue: {
+    fontSize: 12,
+    color: colors.eigth,
+    fontWeight: "600"
   },
   modalOverlay: {
     flex: 1,
@@ -314,7 +331,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end"
   },
   modalContent: {
-    backgroundColor: colors.third,
+    backgroundColor: colors.sixth,
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
     padding: 20,
@@ -350,14 +367,14 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.fifth,
+    borderColor: colors.eigth,
     backgroundColor: "transparent"
   },
   filterOptionSelected: {
     backgroundColor: colors.fifth
   },
   filterOptionText: {
-    color: colors.fifth
+    color: colors.eigth
   },
   filterOptionTextSelected: {
     color: colors.sixth
@@ -420,7 +437,7 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: colors.fifth,
+    borderColor: colors.eigth,
     justifyContent: "center",
     alignItems: "center",
     marginRight: 10
@@ -429,11 +446,11 @@ const styles = StyleSheet.create({
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.fifth
+    backgroundColor: colors.eigth
   },
   radioText: {
     fontSize: 16,
-    color: colors.fifth
+    color: colors.eigth
   },
   divider: {
     height: 1,
@@ -455,6 +472,7 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: colors.fifth,
-    flexShrink: 1 // Đảm bảo tiêu đề không tràn ra ngoài
+    flexShrink: 1, // Đảm bảo tiêu đề không tràn ra ngoài
+    paddingBottom: 12
   }
 });

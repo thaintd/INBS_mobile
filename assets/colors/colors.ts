@@ -4,6 +4,7 @@ export default {
   third: "#FFD6BE",
   fourth: "#FFC6A4",
   fifth: "#E0366F",
-  sixth: "#FFFFFF",
-  seventh: "#f5dcce"
+  sixth: "#F5F5F5",
+  seventh: "#FFFFFF",
+  eigth: "#1A1A1A"
 };

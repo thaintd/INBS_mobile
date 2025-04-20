@@ -1,184 +1,866 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, FlatList, Image, TouchableOpacity, StyleSheet, ScrollView, ActivityIndicator, Modal, Alert } from "react-native";
 import { Calendar } from "react-native-calendars";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { Ionicons } from "@expo/vector-icons";
+import { store } from "@/services/store";
+import api from "@/lib/api";
 import colors from "@/assets/colors/colors";
+import { Ionicons } from "@expo/vector-icons";
+import { router } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import axios from "axios";
+import * as Location from "expo-location";
+import { cloneUniformsGroups } from "three/src/renderers/shaders/UniformsUtils";
 
-// AI recommended time slots based on user preferences and availability
-const recommendedSlots = [
-  {
-    time: "10:30",
-    day: "Thursday",
-    date: "March 21, 2024",
-    available: true
-  },
-  {
-    time: "15:00",
-    day: "Friday",
-    date: "March 22, 2024",
-    available: true
-  },
-  {
-    time: "11:00",
-    day: "Saturday",
-    date: "March 23, 2024",
-    available: true
+interface Store {
+  ID: string;
+  ImageUrl: string;
+  Description: string;
+  Longtitude: number;
+  Latitude: number;
+  Address: string;
+  averageRating: number;
+}
+
+interface Artist {
+  ID: string;
+  YearsOfExperience: number;
+  Level: string;
+  User: {
+    FullName: string;
+    ImageUrl: string;
+  };
+}
+
+interface ArtistStore {
+  ArtistId: string;
+  StoreId: string;
+  WorkingDate: string;
+  StartTime: string;
+  EndTime: string;
+  Artist: Artist;
+}
+
+interface TimeSlot {
+  start: string;
+  end: string;
+}
+
+const generateTimeSlots = () => {
+  const slots = [];
+  for (let h = 8; h < 20; h++) {
+    slots.push(`${h.toString().padStart(2, "0")}:00`);
   }
-];
+  return slots;
+};
 
-// Available time slots
-const timeSlots = ["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30", "18:00", "18:30", "19:00", "19:30"];
+const StoreSelectionScreen = () => {
+  const [stores, setStores] = useState<Store[]>([]);
+  const [selectedStore, setSelectedStore] = useState<Store | null>(null);
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [artists, setArtists] = useState<ArtistStore[]>([]);
+  const [suggestedTimeSlots, setSuggestedTimeSlots] = useState<TimeSlot[]>([]);
+  const [loadingStates, setLoadingStates] = useState({
+    fetchingStores: false,
+    fetchingArtists: false,
+    predictingTime: false,
+    booking: false
+  });
+  const [customerSelectedId, setCustomerSelectedId] = useState<string | null>(null);
+  const [location, setLocation] = useState<Location.LocationObject | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const TOGETHER_AI_URL = "https://api.together.xyz/v1/chat/completions";
+  const API_KEY = "469acea901a9fff8210792874151eaa2582149dbf8fa1a28db48ebb4c5901382";
+  const [showConfirmation, setShowConfirmation] = useState(false);
+  const [selectedArtist, setSelectedArtist] = useState<ArtistStore | null>(null);
 
-export default function Schedule() {
-  const router = useRouter();
-  const { nailId, serviceType, additionalServices } = useLocalSearchParams();
+  useEffect(() => {
+    const getCustomerSelectedId = async () => {
+      const id = await AsyncStorage.getItem("customerSelected");
+      if (id) {
+        setCustomerSelectedId(JSON.parse(id));
+      }
+    };
+    getCustomerSelectedId();
+  }, []);
 
-  const [selectedDate, setSelectedDate] = useState("");
-  const [selectedTime, setSelectedTime] = useState("");
-  const [selectedRecommended, setSelectedRecommended] = useState("");
+  useEffect(() => {
+    (async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        setLocationError("Permission to access location was denied");
+        return;
+      }
 
-  const markedDates = {
-    [selectedDate]: {
-      selected: true,
-      selectedColor: colors.fifth
+      try {
+        let location = await Location.getCurrentPositionAsync({});
+        setLocation(location);
+      } catch (error) {
+        setLocationError("Error getting location");
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    const fetchStores = async () => {
+      setLoadingStates(prev => ({ ...prev, fetchingStores: true }));
+      try {
+        const data = await store.getStore();
+        console.log(data);
+        setStores(data);
+      } catch (error) {
+        console.error("Error fetching stores:", error);
+      } finally {
+        setLoadingStates(prev => ({ ...prev, fetchingStores: false }));
+      }
+    };
+    fetchStores();
+  }, []);
+
+  useEffect(() => {
+    const handleSuggestTimeSlots = async () => {
+      if (!selectedStore || !selectedDate) return;
+      
+      try {
+        const formData = new FormData();
+        formData.append('date', selectedDate);
+        formData.append('storeId', selectedStore.ID);
+
+        const res = await axios.post(`https://inbsapi-d9hhfmhsapgabrcz.southeastasia-01.azurewebsites.net/api/Booking/SuggestTimeSlots`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+        console.log("SuggestTimeSlots response:", res.data);
+        setSuggestedTimeSlots(res.data);
+      } catch (error) {
+        console.error("Error fetching suggested time slots:", error);
+      }
+    };
+
+    handleSuggestTimeSlots();
+  }, [selectedStore, selectedDate]);
+
+  const isSuggestedTimeSlot = (time: string) => {
+    return suggestedTimeSlots.some(slot => slot.start === time);
+  };
+
+  const fetchArtists = async () => {
+    if (!selectedStore || !selectedDate || !selectedTime) return;
+
+    setLoadingStates(prev => ({ ...prev, fetchingArtists: true }));
+    try {
+      const apiUrl = `https://inbsapi-d9hhfmhsapgabrcz.southeastasia-01.azurewebsites.net/odata/artistStore?$filter=storeId eq ${selectedStore.ID} and ${selectedTime} ge startTime and ${selectedTime} le endTime and ${selectedDate} eq workingDate
+      &$select=artistId,storeId,workingDate,endTime,startTime
+      &$expand=store($select=id),artist($select=yearsOfExperience,level,id,averageRating;$expand=user($select=fullName,imageUrl))`;
+      const response = await api.get(apiUrl);
+      setArtists(response.data.value);
+    } catch (error) {
+      console.error("Error fetching artists:", error);
+    } finally {
+      setLoadingStates(prev => ({ ...prev, fetchingArtists: false }));
     }
+  };
+  const fetchArtist = async () => {
+    if (!selectedStore || !selectedDate || !selectedTime) {
+      console.log("Missing required data:", { selectedStore, selectedDate, selectedTime });
+      return null;
+    }
+
+    setLoadingStates(prev => ({ ...prev, fetchingArtists: true }));
+    try {
+      const apiUrl = `https://inbsapi-d9hhfmhsapgabrcz.southeastasia-01.azurewebsites.net/odata/artistStore?$filter=storeId eq ${selectedStore.ID} and ${selectedTime} ge startTime and ${selectedTime} le endTime and ${selectedDate} eq workingDate
+      &$select=artistId,storeId,workingDate,endTime,startTime
+      &$expand=store($select=id),artist($select=yearsOfExperience,level,id,averageRating;$expand=user($select=fullName,imageUrl))`;
+
+      const response = await api.get(apiUrl);
+
+      if (!response.data || !response.data.value || response.data.value.length === 0) {
+        console.log("No artists found for the selected criteria");
+        return null;
+      }
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching artists:", error);
+      return null;
+    } finally {
+      setLoadingStates(prev => ({ ...prev, fetchingArtists: false }));
+    }
+  };
+
+
+
+  const fetchCustomerSelectedServices = async (customerSelectedId: string) => {
+    if (!customerSelectedId) {
+      console.log("Missing customerSelectedId");
+      return null;
+    }
+
+    try {
+      const query = `
+        $filter=id eq ${customerSelectedId} 
+        &$select=id 
+        &$expand=nailDesignServiceSelecteds(
+          $select=nailDesignServiceId;
+          $expand=nailDesignService(
+            $select=id;
+            $expand=service($select=name,description,price,averageDuration)
+          )
+        )
+      `;
+
+      const response = await api.get(`/odata/customerSelected?${query}`);
+
+      if (!response.data || !response.data.value || response.data.value.length === 0) {
+        console.log("No customer selected services found");
+        return null;
+      }
+
+      return response;
+    } catch (error) {
+      console.error("Error fetching customer selected services:", error);
+      return null;
+    }
+  };
+
+  const handlePredict = async () => {
+    if (!customerSelectedId) {
+      console.log("Missing customerSelectedId");
+      return null;
+    }
+    if (!selectedStore || !selectedDate || !selectedTime) {
+      console.log("Missing required booking data:", { selectedStore, selectedDate, selectedTime });
+      return null;
+    }
+    setLoadingStates(prev => ({ ...prev, predictingTime: true }));
+    try {
+      const artistData = await fetchArtist();
+      const bookingData = await fetchCustomerSelectedServices(customerSelectedId);
+      console.log("artistData", artistData);
+      console.log("bookingData", bookingData);
+      if (!artistData || !bookingData) {
+        console.log("Failed to fetch required data:", { artistData: !!artistData, bookingData: !!bookingData });
+        return null;
+      }
+      const predictedTime = await predictCompletionTime(bookingData, artistData);
+      return predictedTime;
+    } catch (error) {
+      console.error("Error in handlePredict:", error);
+      return null;
+    } finally {
+      setLoadingStates(prev => ({ ...prev, predictingTime: false }));
+    }
+  };
+
+  const predictCompletionTime = async (bookingData: any, artistData: any) => {
+    setLoadingStates(prev => ({ ...prev, predictingTime: true }));
+    try {
+      const requestBody = {
+        model: "meta-llama/Llama-Vision-Free",
+        messages: [
+          {
+            role: "A professional nail artist",
+            content: `Hãy trả lời một con số cụ thể, không cần phân tích, dự đoán thời gian hoàn thành dịch vụ dựa vào các thông tin Booking ${JSON.stringify(bookingData)} và thông tin của Artist ${JSON.stringify(artistData)}, nếu lỗi thì trả về mặc định là 60 phút`
+          }
+        ],
+        temperature: 0.7
+      };
+      const response = await axios.post(TOGETHER_AI_URL, requestBody, {
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json"
+        }
+      });
+      if (response.data?.choices?.length > 0) {
+        const predictedTime = parseInt(response.data.choices[0].message.content, 10);
+        return isNaN(predictedTime) || predictedTime <= 0 ? 60 : predictedTime;
+      }
+      return 60;
+    } catch (error) {
+      console.error("Error predicting completion time:", error);
+      return 60;
+    } finally {
+      setLoadingStates(prev => ({ ...prev, predictingTime: false }));
+    }
+  };
+  const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+    const R = 6371; // Radius of the earth in km
+    const dLat = deg2rad(lat2 - lat1);
+    const dLon = deg2rad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const d = R * c; // Distance in km
+    return d.toFixed(1);
+  };
+  const deg2rad = (deg: number) => {
+    return deg * (Math.PI / 180);
+  };
+  const handleArtistSelect = (artist: ArtistStore) => {
+    setSelectedArtist(artist);
+    setShowConfirmation(true);
+  };
+  const handleConfirmBooking = async () => {
+    if (!selectedArtist) return;
+    setLoadingStates(prev => ({ ...prev, booking: true }));
+    setShowConfirmation(false);
+    try {
+      const predictEndTime = await handlePredict();
+      console.log(predictEndTime);
+      const formData = new FormData();
+      formData.append("ServiceDate", selectedArtist.WorkingDate);
+      formData.append("StartTime", selectedTime || "");
+      formData.append("CustomerSelectedId", customerSelectedId || "");
+      formData.append("ArtistId", selectedArtist.ArtistId);
+      formData.append("StoreId", selectedArtist.StoreId);
+      if (predictEndTime) {
+        formData.append("EstimateDuration", predictEndTime.toString());
+      }
+      const response = await api.post("/api/Booking", formData);
+      const bookingId = response.data;
+      const booking = await api.get(`/odata/booking?$filter=id eq ${bookingId}&$select=id,predictEndTime`);
+      const predict = booking.data.value?.[0]?.PredictEndTime;
+      const predictEnd = predict ? predict.slice(0, 5) : null;
+      if (response.status === 200 && booking) {
+        router.push({
+          pathname: "/nails/success",
+          params: {
+            date: selectedDate,
+            time: selectedTime,
+            artistName: selectedArtist.Artist.User.FullName,
+            predictEndTime: predictEnd
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error posting booking:", error);
+      Alert.alert("Lỗi", "Không thể đặt lịch. Vui lòng thử lại sau.");
+    } finally {
+      setLoadingStates(prev => ({ ...prev, booking: false }));
+    }
+  };
+
+  const renderStoreSelection = () => (
+    <>
+      <Text style={styles.title}>🏠 Chọn một cửa hàng</Text>
+      <FlatList
+        data={stores}
+        keyExtractor={(item) => item.ID}
+        renderItem={({ item }) => {
+          const distance = location ? calculateDistance(location.coords.latitude, location.coords.longitude, item.Latitude, item.Longtitude) : null;
+
+          console.log("Location:", location?.coords);
+          console.log("Store coordinates:", { lat: item.Latitude, lon: item.Longtitude });
+          console.log("Calculated distance:", distance);
+
+          return (
+            <TouchableOpacity style={styles.card} onPress={() => setSelectedStore(item)}>
+              <Image source={{ uri: item.ImageUrl }} style={styles.image} />
+              <View style={styles.storeInfo}>
+                <View style={styles.storeHeader}>
+                  <Ionicons name="business-outline" size={20} color={colors.fifth} />
+                  <Text style={styles.storeName}>{item.Address}</Text>
+                </View>
+                <View style={styles.storeAddress}>
+                  <Ionicons name="location-outline" size={16} color={colors.fifth} />
+                  <Text style={styles.addressText}>{item.Description}</Text>
+                </View>
+                {distance !== null && (
+                  <View style={styles.distanceContainer}>
+                    <Ionicons name="navigate-outline" size={16} color={colors.fifth} />
+                    <Text style={styles.distanceText}>{distance} km</Text>
+                  </View>
+                )}
+              </View>
+            </TouchableOpacity>
+          );
+        }}
+      />
+    </>
+  );
+
+  const isPastDate = (date: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const selected = new Date(date);
+    return selected < today;
+  };
+
+  const isPastTime = (time: string) => {
+    if (!selectedDate) return false;
+    
+    const now = new Date();
+    const [hours, minutes] = time.split(':').map(Number);
+    const selectedDateTime = new Date(selectedDate);
+    selectedDateTime.setHours(hours, minutes, 0, 0);
+    
+    return selectedDateTime < now;
+  };
+
+  const renderSchedulingContent = () => {
+    const schedulingData = [
+      {
+        type: "store",
+        content: (
+          <View style={styles.selectedStore}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="business-outline" size={24} color={colors.fifth} />
+              <Text style={styles.sectionTitle}>Cửa hàng đã chọn</Text>
+            </View>
+            {selectedStore && (
+              <View style={styles.selectedStoreContent}>
+                <Image source={{ uri: selectedStore.ImageUrl }} style={styles.selectedImage} />
+                <View style={styles.selectedStoreInfo}>
+                  <Text style={styles.selectedStoreName}>{selectedStore.Address}</Text>
+                  <Text style={styles.selectedStoreDesc}>{selectedStore.Description}</Text>
+                  <View style={styles.selectedStoreRating}>
+                    <Ionicons name="star" size={16} color={colors.fifth} />
+                    <Text style={styles.ratingText}>{selectedStore.AverageRating.toFixed(1)}</Text>
+                  </View>
+                </View>
+              </View>
+            )}
+          </View>
+        )
+      },
+      {
+        type: "calendar",
+        content: (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="calendar-outline" size={24} color={colors.fifth} />
+              <Text style={styles.sectionTitle}>Chọn ngày</Text>
+            </View>
+            <View style={styles.calendarContainer}>
+              <Calendar
+                onDayPress={(day: { dateString: string }) => {
+                  if (!isPastDate(day.dateString)) {
+                    setSelectedDate(day.dateString);
+                  }
+                }}
+                markedDates={{
+                  ...(selectedDate ? { [selectedDate]: { selected: true, selectedColor: colors.fifth } } : {}),
+                  ...Object.fromEntries(
+                    Array.from({ length: 365 }, (_, i) => {
+                      const date = new Date();
+                      date.setDate(date.getDate() - i - 1);
+                      return [date.toISOString().split('T')[0], { disabled: true, disableTouchEvent: true }];
+                    })
+                  )
+                }}
+                theme={{
+                  selectedDayBackgroundColor: colors.fifth,
+                  todayTextColor: colors.fifth,
+                  arrowColor: colors.fifth,
+                  textDayFontSize: 14,
+                  textMonthFontSize: 16,
+                  textDayHeaderFontSize: 14,
+                  textDayFontWeight: "500",
+                  textMonthFontWeight: "600",
+                  textDayHeaderFontWeight: "500",
+                  disabledArrowColor: '#d9d9d9',
+                  disabledDotColor: '#d9d9d9',
+                  disabledTextColor: '#d9d9d9'
+                }}
+              />
+            </View>
+            {selectedDate && (
+              <View style={styles.selectedInfo}>
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.fifth} />
+                <Text style={styles.selectedText}>Ngày đã chọn: {selectedDate}</Text>
+              </View>
+            )}
+          </View>
+        )
+      },
+      {
+        type: "time",
+        content: (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="time-outline" size={24} color={colors.fifth} />
+              <Text style={styles.sectionTitle}>Chọn giờ</Text>
+            </View>
+            <View style={styles.timeContainer}>
+              {generateTimeSlots().map((time) => {
+                const isSuggested = isSuggestedTimeSlot(time);
+                const isPast = isPastTime(time);
+                return (
+                  <TouchableOpacity 
+                    key={time} 
+                    style={[
+                      styles.timeSlot, 
+                      selectedTime === time && styles.selectedTime,
+                      isSuggested && styles.suggestedTime,
+                      isPast && styles.disabledTime
+                    ]} 
+                    onPress={() => !isPast && setSelectedTime(time)}
+                    disabled={isPast}
+                  >
+                    <Ionicons 
+                      name={selectedTime === time ? "time" : "time-outline"} 
+                      size={16} 
+                      color={selectedTime === time ? "#fff" : isSuggested ? colors.fifth : isPast ? '#d9d9d9' : colors.fifth} 
+                    />
+                    <Text style={[
+                      styles.timeText, 
+                      selectedTime === time && styles.selectedTimeText,
+                      isSuggested && styles.suggestedTimeText,
+                      isPast && styles.disabledTimeText
+                    ]}>
+                      {time}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            {selectedTime && (
+              <View style={styles.selectedInfo}>
+                <Ionicons name="checkmark-circle-outline" size={20} color={colors.fifth} />
+                <Text style={styles.selectedText}>Giờ đã chọn: {selectedTime}</Text>
+              </View>
+            )}
+            {suggestedTimeSlots.length > 0 && (
+              <View style={styles.suggestedInfo}>
+                <Ionicons name="information-circle-outline" size={16} color={colors.fifth} />
+                <Text style={styles.suggestedText}>Khung giờ được gợi ý</Text>
+              </View>
+            )}
+          </View>
+        )
+      },
+      {
+        type: "search",
+        content: (
+          <TouchableOpacity onPress={fetchArtists} style={[styles.searchButton, loadingStates.fetchingArtists && styles.searchButtonDisabled]} disabled={loadingStates.fetchingArtists}>
+            <Ionicons name="search-outline" size={20} color="#fff" />
+            <Text style={styles.searchButtonText}>{loadingStates.fetchingArtists ? "Đang tìm..." : "Tìm Artist"}</Text>
+          </TouchableOpacity>
+        )
+      },
+      {
+        type: "artists",
+        content: (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Ionicons name="people-outline" size={24} color={colors.fifth} />
+              <Text style={styles.sectionTitle}>Danh sách Artist</Text>
+            </View>
+            {loadingStates.fetchingArtists ? (
+              <ActivityIndicator size="large" color={colors.fifth} />
+            ) : (
+              <FlatList
+                data={artists}
+                keyExtractor={(item) => item.Artist.ID}
+                renderItem={renderArtistCard}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="people-outline" size={48} color="#ccc" />
+                    <Text style={styles.emptyText}>Không có Artist nào</Text>
+                  </View>
+                }
+                scrollEnabled={false}
+              />
+            )}
+          </View>
+        )
+      }
+    ];
+
+    return (
+      <>
+        <FlatList data={schedulingData} keyExtractor={(item, index) => `${item.type}-${index}`} renderItem={({ item }) => item.content} contentContainerStyle={styles.schedulingContainer} />
+        {renderConfirmationModal()}
+      </>
+    );
+  };
+
+  const renderConfirmationModal = () => (
+    <Modal visible={showConfirmation} transparent animationType="fade">
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Xác nhận đặt lịch</Text>
+            <TouchableOpacity onPress={() => setShowConfirmation(false)}>
+              <Ionicons name="close" size={24} color="#666" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.modalBody}>
+            <View style={styles.confirmationItem}>
+              <Ionicons name="business-outline" size={20} color={colors.fifth} />
+              <View style={styles.confirmationText}>
+                <Text style={styles.confirmationLabel}>Cửa hàng</Text>
+                <Text style={styles.confirmationValue}>{selectedStore?.Description}</Text>
+              </View>
+            </View>
+
+            <View style={styles.confirmationItem}>
+              <Ionicons name="calendar-outline" size={20} color={colors.fifth} />
+              <View style={styles.confirmationText}>
+                <Text style={styles.confirmationLabel}>Ngày</Text>
+                <Text style={styles.confirmationValue}>{selectedDate}</Text>
+              </View>
+            </View>
+
+            <View style={styles.confirmationItem}>
+              <Ionicons name="time-outline" size={20} color={colors.fifth} />
+              <View style={styles.confirmationText}>
+                <Text style={styles.confirmationLabel}>Giờ</Text>
+                <Text style={styles.confirmationValue}>{selectedTime}</Text>
+              </View>
+            </View>
+
+            <View style={styles.confirmationItem}>
+              <Ionicons name="person-outline" size={20} color={colors.fifth} />
+              <View style={styles.confirmationText}>
+                <Text style={styles.confirmationLabel}>Artist</Text>
+                <Text style={styles.confirmationValue}>{selectedArtist?.Artist.User.FullName}</Text>
+              </View>
+            </View>
+          </View>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowConfirmation(false)}>
+              <Text style={styles.cancelButtonText}>Hủy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.confirmButton} onPress={handleConfirmBooking} disabled={loadingStates.booking}>
+              <Ionicons name="checkmark-circle-outline" size={20} color="#fff" />
+              <Text style={styles.confirmButtonText}>{loadingStates.booking ? "Đang xử lý..." : "Xác nhận đặt lịch"}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
+  const renderArtistCard = ({ item }: { item: ArtistStore }) => {
+    const artist = item.Artist;
+    return (
+      <View style={styles.artistCard}>
+        <View style={styles.artistHeader}>
+          <Image source={{ uri: artist.User.ImageUrl }} style={styles.artistImage} />
+          <View style={styles.artistInfo}>
+            <Text style={styles.artistName}>{artist.User.FullName}</Text>
+            <View style={styles.artistLevel}>
+              <Ionicons name="ribbon-outline" size={16} color={colors.fifth} />
+              <Text style={styles.artistLevelText}>Level: {artist.Level}</Text>
+            </View>
+            <View style={styles.artistRating}>
+              <Ionicons name="star" size={16} color={colors.fifth} />
+              <Text style={styles.artistRatingText}>Rating: {artist.AverageRating.toFixed(1)}</Text>
+            </View>
+          </View>
+
+        </View>
+        <View style={styles.artistDetails}>
+          <View style={styles.detailItem}>
+            <Ionicons name="briefcase-outline" size={16} color={colors.fifth} />
+            <Text style={styles.detailText}>{artist.YearsOfExperience} năm kinh nghiệm</Text>
+          </View>
+          <TouchableOpacity onPress={() => handleArtistSelect(item)} style={[styles.bookButton, loadingStates.fetchingArtists && styles.bookButtonDisabled]} disabled={loadingStates.fetchingArtists}>
+            <Ionicons name="calendar-outline" size={20} color="#fff" />
+            <Text style={styles.bookButtonText}>{loadingStates.fetchingArtists ? "Đang xử lý..." : "Đặt lịch"}</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  const renderLoadingModal = () => {
+    const { fetchingStores, fetchingArtists, predictingTime, booking } = loadingStates;
+    const isLoading = fetchingStores || fetchingArtists || predictingTime || booking;
+    
+    if (!isLoading) return null;
+
+    let loadingText = "Đang xử lý...";
+    if (fetchingStores) loadingText = "Đang tải danh sách cửa hàng...";
+    if (fetchingArtists) loadingText = "Đang tìm kiếm artist...";
+    if (predictingTime) loadingText = "Đang dự đoán thời gian hoàn thành...";
+    if (booking) loadingText = "Đang xử lý đặt lịch...";
+
+    return (
+      <Modal visible={isLoading} transparent animationType="fade">
+        <View style={styles.loadingOverlay}>
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={colors.fifth} />
+            <Text style={styles.loadingText}>{loadingText}</Text>
+            <Text style={styles.loadingSubText}>Vui lòng chờ trong giây lát</Text>
+          </View>
+        </View>
+      </Modal>
+    );
   };
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Ionicons name="arrow-back-circle-outline" size={32} color={colors.fifth} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Choose Date & Time</Text>
-      </View>
-
-      <ScrollView style={styles.content}>
-        {/* AI Recommended Slots */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="sparkles-outline" size={24} color={colors.fifth} />
-            <Text style={styles.sectionTitle}>AI Recommended Times</Text>
-          </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recommendedContainer}>
-            {recommendedSlots.map((slot, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[styles.recommendedCard, selectedRecommended === `${slot.date}-${slot.time}` && styles.recommendedCardSelected]}
-                onPress={() => {
-                  setSelectedRecommended(`${slot.date}-${slot.time}`);
-                  setSelectedDate(slot.date);
-                  setSelectedTime(slot.time);
-                }}
-              >
-                <Text style={styles.recommendedTime}>{slot.time}</Text>
-                <Text style={styles.recommendedDay}>{slot.day}</Text>
-                <Text style={styles.recommendedDate}>{slot.date}</Text>
-                <View style={styles.recommendedBadge}>
-                  <Ionicons name="thumbs-up-outline" size={12} color={colors.fifth} />
-                  <Text style={styles.recommendedBadgeText}>Best Match</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-        </View>
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle1}>If not, please select the calendar below</Text>
-        </View>
-
-        {/* Calendar */}
-        <View style={styles.calendarContainer}>
-          <Calendar
-            onDayPress={(day) => setSelectedDate(day.dateString)}
-            markedDates={markedDates}
-            theme={{
-              backgroundColor: colors.third,
-              calendarBackground: colors.third,
-              textSectionTitleColor: colors.fifth,
-              selectedDayBackgroundColor: colors.fifth,
-              selectedDayTextColor: colors.sixth,
-              todayTextColor: colors.fifth,
-              dayTextColor: colors.fifth,
-              textDisabledColor: `${colors.fifth}50`,
-              arrowColor: colors.fifth,
-              monthTextColor: colors.fifth,
-              textDayFontWeight: "500",
-              textMonthFontWeight: "bold",
-              textDayHeaderFontWeight: "500"
-            }}
-          />
-        </View>
-
-        {/* Time Slots */}
-        <View style={styles.timeSection}>
-          <Text style={styles.sectionTitle}>Available Times</Text>
-          <View style={styles.timeSlotsContainer}>
-            {timeSlots.map((time) => (
-              <TouchableOpacity key={time} style={[styles.timeSlot, selectedTime === time && styles.timeSlotSelected]} onPress={() => setSelectedTime(time)}>
-                <Text style={[styles.timeSlotText, selectedTime === time && styles.timeSlotTextSelected]}>{time}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Bottom Action */}
-      <View style={styles.bottomAction}>
-        <View style={styles.bottomButtons}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <Text style={styles.backText}>Back</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[styles.confirmButton, (!selectedDate || !selectedTime) && styles.confirmButtonDisabled]}
-            disabled={!selectedDate || !selectedTime}
-            onPress={() => {
-              router.push({
-                pathname: "/nails/confirmation",
-                params: {
-                  nailId,
-                  serviceType,
-                  additionalServices,
-                  date: selectedDate,
-                  time: selectedTime
-                }
-              });
-            }}
-          >
-            <Text style={styles.confirmButtonText}>Confirm</Text>
+      {selectedStore && (
+        <View style={styles.headerAbsolute}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="chevron-back" size={24} color={colors.fifth} />
           </TouchableOpacity>
         </View>
-      </View>
+      )}
+
+      {!selectedStore ? renderStoreSelection() : renderSchedulingContent()}
+      {renderLoadingModal()}
     </View>
   );
-}
+};
+
+export default StoreSelectionScreen;
 
 const styles = StyleSheet.create({
+  headerAbsolute: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    zIndex: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 20,
+
+    paddingBottom: 15,
+    backgroundColor: "rgba(255, 255, 255, 0.95)",
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0"
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "#f5f5f5",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#e0e0e0"
+  },
   container: {
     flex: 1,
-    backgroundColor: colors.seventh
+    backgroundColor: "#fff"
   },
-  header: {
+  title: {
+    fontSize: 24,
+    fontWeight: "700",
+    color: "#333",
+    textAlign: "center",
+    marginTop: 70,
+    marginBottom: 20
+  },
+  card: {
+    backgroundColor: "#fff",
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16,
+    flexDirection: "row",
+    alignItems: "flex-start",
+    borderWidth: 1,
+    borderColor: "#f0f0f0"
+  },
+  image: {
+    width: 100,
+    height: 100,
+    borderRadius: 12,
+    marginRight: 16
+  },
+  storeInfo: {
+    flex: 1,
+    gap: 8
+  },
+  storeHeader: {
     flexDirection: "row",
     alignItems: "center",
-    padding: 16,
-    paddingTop: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.fourth
+    gap: 8,
+    marginBottom: 4
   },
-  headerTitle: {
-    fontSize: 22,
+  storeName: {
+    fontSize: 16,
     fontWeight: "600",
-    color: colors.fifth,
-    marginLeft: 12
-  },
-  content: {
+    color: "#333",
     flex: 1
   },
+  storeAddress: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 4
+  },
+  addressText: {
+    fontSize: 14,
+    color: "#666",
+    flex: 1
+  },
+  distanceContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: "flex-start"
+  },
+  distanceText: {
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "500"
+  },
+  selectedStore: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f0f0f0",
+    marginTop: 10
+  },
+  selectedStoreContent: {
+    flexDirection: "row",
+    gap: 16
+  },
+  selectedStoreInfo: {
+    flex: 1,
+    gap: 8
+  },
+  selectedStoreName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333"
+  },
+  selectedStoreDesc: {
+    fontSize: 14,
+    color: "#666"
+  },
+  selectedStoreRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: "flex-start"
+  },
+  ratingText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333"
+  },
+  selectedImage: {
+    width: 120,
+    height: 120,
+    borderRadius: 10,
+    marginVertical: 10
+  },
   section: {
-    padding: 16
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: "#f0f0f0"
   },
   sectionHeader: {
     flexDirection: "row",
@@ -189,152 +871,324 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "600",
-    color: colors.fifth
-  },
-  sectionTitle1: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: colors.fifth,
-    paddingLeft: 16
-  },
-  recommendedContainer: {
-    marginBottom: 16
-  },
-  recommendedCard: {
-    backgroundColor: colors.fourth,
-    borderRadius: 12,
-    padding: 16,
-    marginRight: 12,
-    width: 150
-  },
-  recommendedCardSelected: {
-    backgroundColor: `${colors.fifth}10`,
-    borderColor: colors.fifth,
-    borderWidth: 1
-  },
-  recommendedTime: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: colors.fifth,
-    marginBottom: 4
-  },
-  recommendedDay: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: colors.fifth,
-    marginBottom: 2
-  },
-  recommendedDate: {
-    fontSize: 14,
-    color: `${colors.fifth}80`,
-    marginBottom: 8
-  },
-  recommendedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-    backgroundColor: `${colors.fifth}10`,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: "flex-start"
-  },
-  recommendedBadgeText: {
-    fontSize: 12,
-    color: colors.fifth
+    color: "#333"
   },
   calendarContainer: {
-    backgroundColor: colors.fourth,
+    backgroundColor: "#fff",
     borderRadius: 12,
-    margin: 16,
-    overflow: "hidden"
+    padding: 8,
+    marginBottom: 12
   },
-  timeSection: {
-    padding: 16
-  },
-  timeSlotsContainer: {
+  timeContainer: {
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 8,
-    marginTop: 12
+    marginBottom: 12,
+    justifyContent: "space-between"
   },
   timeSlot: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    backgroundColor: colors.fourth,
-    borderWidth: 1,
-    borderColor: colors.fourth
-  },
-  timeSlotSelected: {
-    backgroundColor: colors.fifth,
-    borderColor: colors.fifth
-  },
-  timeSlotText: {
-    fontSize: 14,
-    color: colors.fifth
-  },
-  timeSlotTextSelected: {
-    color: colors.sixth
-  },
-  bottomAction: {
-    padding: 16,
-    paddingBottom: 32,
-    backgroundColor: colors.third,
-    borderTopWidth: 1,
-    borderTopColor: colors.fourth
-  },
-  bottomButtons: {
     flexDirection: "row",
-    gap: 16,
-    paddingHorizontal: 8
-  },
-  backButton: {
-    flex: 1,
-    height: 45,
-    justifyContent: "center",
     alignItems: "center",
-    backgroundColor: colors.fourth,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: colors.fifth,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-    elevation: 2
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+    width: "31%",
+    minWidth: 0
   },
-  backText: {
+  selectedTime: {
+    backgroundColor: colors.fifth
+  },
+  timeText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333"
+  },
+  selectedTimeText: {
+    color: "#fff"
+  },
+  selectedInfo: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: "#f5f5f5",
+    padding: 12,
+    borderRadius: 8
+  },
+  selectedText: {
+    fontSize: 14,
+    color: "#333",
+    fontWeight: "500"
+  },
+  searchButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.fifth,
+    padding: 16,
+    borderRadius: 8,
+    marginBottom: 16
+  },
+  searchButtonDisabled: {
+    opacity: 0.7
+  },
+  searchButtonText: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.fifth
+    color: "#fff"
+  },
+  artistCard: {
+    backgroundColor: "#fff",
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#f0f0f0"
+  },
+  artistHeader: {
+    flexDirection: "row",
+    gap: 12,
+    marginBottom: 12
+  },
+  artistImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30
+  },
+  artistInfo: {
+    flex: 1,
+    gap: 4
+  },
+  artistName: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#333"
+  },
+  artistLevel: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4
+  },
+  artistLevelText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500"
+  },
+  artistRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4
+  },
+  artistRatingText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "500"
+  },
+  artistDetails: {
+    gap: 8
+  },
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8
+  },
+  detailText: {
+    fontSize: 14,
+    color: "#666"
+  },
+  bookButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    backgroundColor: colors.fifth,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 8
+  },
+  bookButtonDisabled: {
+    opacity: 0.7
+  },
+  bookButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#fff"
+  },
+  emptyContainer: {
+    alignItems: "center",
+    padding: 24
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#999",
+    marginTop: 8
+  },
+  schedulingContainer: {
+    padding: 16,
+    paddingTop: 80,
+    paddingBottom: 20
+  },
+  locationContainer: {
+    backgroundColor: "#e3f2fd",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    alignItems: "center"
+  },
+  locationText: {
+    fontSize: 14,
+    color: "#333"
+  },
+  errorContainer: {
+    backgroundColor: "#ffebee",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    alignItems: "center"
+  },
+  errorText: {
+    fontSize: 14,
+    color: "#c62828"
+  },
+  description: {
+    fontSize: 14,
+    color: "#555",
+    flex: 1
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  modalContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    width: "90%",
+    maxHeight: "80%"
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#f0f0f0"
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    color: "#333"
+  },
+  modalBody: {
+    padding: 16,
+    gap: 16
+  },
+  confirmationItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  confirmationText: {
+    flex: 1
+  },
+  confirmationLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 4
+  },
+  confirmationValue: {
+    fontSize: 16,
+    color: "#333",
+    fontWeight: "500"
+  },
+  modalFooter: {
+    flexDirection: "row",
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#f0f0f0"
+  },
+  cancelButton: {
+    flex: 1,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: "#f5f5f5",
+    alignItems: "center"
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    color: "#666",
+    fontWeight: "500"
   },
   confirmButton: {
     flex: 1,
-    height: 45,
-    justifyContent: "center",
+    flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.fifth,
-    borderRadius: 25,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3
-  },
-  confirmButtonDisabled: {
-    opacity: 0.6,
-    backgroundColor: `${colors.fifth}80`
+    justifyContent: "center",
+    gap: 8,
+    padding: 12,
+    borderRadius: 8,
+    backgroundColor: colors.fifth
   },
   confirmButtonText: {
     fontSize: 16,
+    color: "#fff",
+    fontWeight: "600"
+  },
+  loadingOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center"
+  },
+  loadingContent: {
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 24,
+    alignItems: "center",
+    width: "80%"
+  },
+  loadingText: {
+    fontSize: 18,
     fontWeight: "600",
-    color: colors.sixth
+    color: "#333",
+    marginTop: 16,
+    marginBottom: 8
+  },
+  loadingSubText: {
+    fontSize: 14,
+    color: "#666",
+    textAlign: "center"
+  },
+  suggestedTime: {
+    backgroundColor: '#E3F2FD',
+    borderColor: colors.fifth
+  },
+  suggestedTimeText: {
+    color: colors.fifth
+  },
+  suggestedInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 8,
+    padding: 8,
+    backgroundColor: '#E3F2FD',
+    borderRadius: 8
+  },
+  suggestedText: {
+    fontSize: 14,
+    color: colors.fifth
+  },
+  disabledTime: {
+    backgroundColor: '#f5f5f5',
+    borderColor: '#d9d9d9'
+  },
+  disabledTimeText: {
+    color: '#d9d9d9'
   }
 });

@@ -1,211 +1,367 @@
-import React, { useState } from "react";
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Modal } from "react-native";
+import React, { useState, useEffect } from "react";
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, ScrollView, Image, Modal, ActivityIndicator, Dimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import colors from "@/assets/colors/colors";
 import { router } from "expo-router";
+import { designService } from "@/services/nailDesign";
+import api from "@/lib/api";
 
 interface NailDesign {
-  id: number;
-  name: string;
-  price: string;
-  duration: string;
-  popularity: string;
-  location: string;
-  image: any;
+  Name: string;
+  TrendScore: number;
+  AverageRating: number;
+  ID: string;
+  Medias: Medias[];
+  CreatedAt: string;
 }
 
-const nailDesigns: NailDesign[] = [
-  {
-    id: 1,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  },
-  {
-    id: 2,
-    name: "French Manicure Classic",
-    price: "280,000đ",
-    duration: "1.5h",
-    popularity: "89 clients love this",
-    location: "District 3, HCMC",
-    image: require("../../assets/images/sample2.jpg")
-  },
-  {
-    id: 3,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample3.jpg")
-  },
-  {
-    id: 4,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample4.jpg")
-  },
-  {
-    id: 5,
-    name: "Pink Gradient Design",
-    price: "350,000đ",
-    duration: "2h",
-    popularity: "128 clients love this",
-    location: "District 1, HCMC",
-    image: require("../../assets/images/sample.jpg")
-  }
-];
+interface Medias {
+  ImageUrl: string;
+}
 
-const occasions = ["Christmas", "Birthday", "Wedding", "Valentine", "Anniversary", "Graduation"];
 const priceRanges = ["Under 300k", "300k - 500k", "500k - 1000k", "Over 1000k"];
-const skinTones = ["Pale", "White", "Tanned", "Brown", "Dark Brown"];
 const sortOptions = ["Price: Low to High", "Price: High to Low", "Name A-Z", "Name Z-A"];
 
 export default function Nails() {
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedSort, setSelectedSort] = useState<string>("");
+  const [nailDesigns, setNailDesigns] = useState<NailDesign[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [colors, setColors] = useState([]);
+  const [occasions, setOccasions] = useState([]);
+  const [skintones, setSkintones] = useState([]);
+  const [paintTypes, setPaintTypes] = useState([]);
+  const [activeTab, setActiveTab] = useState("newest");
+  const [showMore, setShowMore] = useState(false);
+  const [selectedOccasions, setSelectedOccasions] = useState<string[]>([]);
+  const [selectedSkintones, setSelectedSkintones] = useState<string[]>([]);
+  const [selectedPaintTypes, setSelectedPaintTypes] = useState<string[]>([]);
+  const [selectedPriceRange, setSelectedPriceRange] = useState<string>("");
+  const [showMoreOccasions, setShowMoreOccasions] = useState(false);
+  const [showMoreSkintones, setShowMoreSkintones] = useState(false);
+  const [showMorePaintTypes, setShowMorePaintTypes] = useState(false);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const [selectedColors, setSelectedColors] = useState<string[]>([]);
+  const [showMoreColors, setShowMoreColors] = useState(false);
+
+  useEffect(() => {
+    const fetchOptions = async () => {
+      try {
+        const [colorsRes, occasionsRes, skintonesRes, paintTypesRes] = await Promise.all([api.get("/api/Adjective/Colors"), api.get("/api/Adjective/Occasions"), api.get("/api/Adjective/Skintone"), api.get("/api/Adjective/PaintType")]);
+        setColors(colorsRes.data);
+        setOccasions(occasionsRes.data);
+        setSkintones(skintonesRes.data);
+        setPaintTypes(paintTypesRes.data);
+      } catch (error) {
+        console.error("Error fetching options:", error);
+      }
+    };
+    fetchOptions();
+  }, []);
+
+  useEffect(() => {
+    const handleGetNailDesign = async () => {
+      try {
+        setLoading(true);
+
+        // Build OData query
+        let query = "/odata/design?$select=id,name,trendscore,averageRating,createdAt&$expand=medias($orderby=numerialOrder asc;$top=1;$select=imageUrl)";
+
+        // Add sorting first
+        switch (activeTab) {
+          case "newest":
+            query += `&$orderby=createdAt ${sortDirection === "asc" ? "asc" : "desc"}`;
+            break;
+          case "rating":
+            query += `&$orderby=averageRating ${sortDirection === "asc" ? "asc" : "desc"}`;
+            break;
+          case "trend":
+            query += `&$orderby=trendscore ${sortDirection === "asc" ? "asc" : "desc"}`;
+            break;
+        }
+
+        // Add filter conditions
+        const filters = ["isDeleted eq false"];
+
+        if (selectedOccasions.length > 0) {
+          filters.push(`preferences/any(p: p/preferenceType eq 1 and p/preferenceId in (${selectedOccasions.join(",")}))`);
+        }
+
+        if (selectedSkintones.length > 0) {
+          filters.push(`preferences/any(p: p/preferenceType eq 3 and p/preferenceId in (${selectedSkintones.join(",")}))`);
+        }
+
+        if (selectedPaintTypes.length > 0) {
+          filters.push(`preferences/any(p: p/preferenceType eq 2 and p/preferenceId in (${selectedPaintTypes.join(",")}))`);
+        }
+
+        if (selectedColors.length > 0) {
+          filters.push(`preferences/any(p: p/preferenceType eq 0 and p/preferenceId in (${selectedColors.join(",")}))`);
+        }
+
+        if (filters.length > 0) {
+          query += `&$filter=${filters.join(" and ")}`;
+        }
+
+        const response = await api.get(query);
+        if (Array.isArray(response.data.value)) {
+          setNailDesigns(response.data.value);
+        }
+      } catch (error) {
+        console.error("Failed to load nail design:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    handleGetNailDesign();
+  }, [activeTab, sortDirection, selectedOccasions, selectedSkintones, selectedPaintTypes, selectedColors, selectedPriceRange]);
+
+  const renderTabs = () => (
+    <View style={styles.tabsContainer}>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === "newest" && styles.activeTab]}
+        onPress={() => {
+          setActiveTab("newest");
+          setSortDirection("desc");
+        }}
+      >
+        <Ionicons name="time-outline" size={20} color={activeTab === "newest" ? colors.sixth : "#666"} />
+        <Text style={[styles.tabText, activeTab === "newest" && styles.activeTabText]}>Mới nhất</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === "rating" && styles.activeTab]}
+        onPress={() => {
+          setActiveTab("rating");
+          setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
+        }}
+      >
+        <Ionicons name="star-outline" size={20} color={activeTab === "rating" ? colors.sixth : "#666"} />
+        <Text style={[styles.tabText, activeTab === "rating" && styles.activeTabText]}>Đánh giá {activeTab === "rating" && (sortDirection === "desc" ? "↓" : "↑")}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === "trend" && styles.activeTab]}
+        onPress={() => {
+          setActiveTab("trend");
+          setSortDirection((prev) => (prev === "desc" ? "asc" : "desc"));
+        }}
+      >
+        <Ionicons name="trending-up-outline" size={20} color={activeTab === "trend" ? colors.sixth : "#666"} />
+        <Text style={[styles.tabText, activeTab === "trend" && styles.activeTabText]}>Trending {activeTab === "trend" && (sortDirection === "desc" ? "↓" : "↑")}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  const toggleOccasion = (id: string) => {
+    setSelectedOccasions((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const toggleSkintone = (id: string) => {
+    setSelectedSkintones((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const togglePaintType = (id: string) => {
+    setSelectedPaintTypes((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const toggleColor = (id: string) => {
+    setSelectedColors((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+  };
+
+  const clearAllFilters = () => {
+    setSelectedOccasions([]);
+    setSelectedSkintones([]);
+    setSelectedPaintTypes([]);
+    setSelectedColors([]);
+    setSelectedPriceRange("");
+  };
+
+  const renderFilterModal = () => (
+    <Modal visible={isModalVisible} transparent={true} animationType="slide" onRequestClose={() => setIsModalVisible(false)}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <View style={styles.modalTitleContainer}>
+              <Ionicons name="filter-outline" size={24} color={colors.fifth} />
+              <Text style={styles.modalTitle}>Bộ lọc</Text>
+            </View>
+            <TouchableOpacity onPress={() => setIsModalVisible(false)}>
+              <Ionicons name="close" size={24} color={colors.fifth} />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.modalScroll}>
+            {/* Color Section */}
+            <View style={styles.filterSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="color-palette-outline" size={20} color={colors.fifth} />
+                <Text style={styles.sectionTitle}>Màu sắc</Text>
+              </View>
+              <View style={styles.filterOptions}>
+                {colors.slice(0, showMoreColors ? undefined : 4).map((color: any) => (
+                  <TouchableOpacity key={color.id} style={[styles.filterOption, selectedColors.includes(color.id) && styles.filterOptionSelected]} onPress={() => toggleColor(color.id)}>
+                    <Text style={[styles.filterOptionText, selectedColors.includes(color.id) && styles.filterOptionTextSelected]}>{color.colorName}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {colors.length > 4 && (
+                <TouchableOpacity style={styles.moreButton} onPress={() => setShowMoreColors(!showMoreColors)}>
+                  <Text style={styles.moreButtonText}>{showMoreColors ? "Thu gọn" : `Xem thêm ${colors.length - 4} màu`}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Occasions Section */}
+            <View style={styles.filterSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="calendar-outline" size={20} color={colors.fifth} />
+                <Text style={styles.sectionTitle}>Dịp</Text>
+              </View>
+              <View style={styles.filterOptions}>
+                {occasions.slice(0, showMoreOccasions ? undefined : 4).map((item: any) => (
+                  <TouchableOpacity key={item.id} style={[styles.filterOption, selectedOccasions.includes(item.id) && styles.filterOptionSelected]} onPress={() => toggleOccasion(item.id)}>
+                    <Text style={[styles.filterOptionText, selectedOccasions.includes(item.id) && styles.filterOptionTextSelected]}>{item.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {occasions.length > 4 && (
+                <TouchableOpacity style={styles.moreButton} onPress={() => setShowMoreOccasions(!showMoreOccasions)}>
+                  <Text style={styles.moreButtonText}>{showMoreOccasions ? "Thu gọn" : `Xem thêm ${occasions.length - 4} dịp`}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Skin Tone Section */}
+            <View style={styles.filterSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="color-palette-outline" size={20} color={colors.fifth} />
+                <Text style={styles.sectionTitle}>Màu da</Text>
+              </View>
+              <View style={styles.filterOptions}>
+                {skintones.slice(0, showMoreSkintones ? undefined : 4).map((tone: any) => (
+                  <TouchableOpacity key={tone.id} style={[styles.filterOption, selectedSkintones.includes(tone.id) && styles.filterOptionSelected]} onPress={() => toggleSkintone(tone.id)}>
+                    <Text style={[styles.filterOptionText, selectedSkintones.includes(tone.id) && styles.filterOptionTextSelected]}>{tone.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {skintones.length > 4 && (
+                <TouchableOpacity style={styles.moreButton} onPress={() => setShowMoreSkintones(!showMoreSkintones)}>
+                  <Text style={styles.moreButtonText}>{showMoreSkintones ? "Thu gọn" : `Xem thêm ${skintones.length - 4} màu da`}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Paint Type Section */}
+            <View style={styles.filterSection}>
+              <View style={styles.sectionHeader}>
+                <Ionicons name="brush-outline" size={20} color={colors.fifth} />
+                <Text style={styles.sectionTitle}>Loại sơn</Text>
+              </View>
+              <View style={styles.filterOptions}>
+                {paintTypes.slice(0, showMorePaintTypes ? undefined : 4).map((type: any) => (
+                  <TouchableOpacity key={type.id} style={[styles.filterOption, selectedPaintTypes.includes(type.id) && styles.filterOptionSelected]} onPress={() => togglePaintType(type.id)}>
+                    <Text style={[styles.filterOptionText, selectedPaintTypes.includes(type.id) && styles.filterOptionTextSelected]}>{type.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+              {paintTypes.length > 4 && (
+                <TouchableOpacity style={styles.moreButton} onPress={() => setShowMorePaintTypes(!showMorePaintTypes)}>
+                  <Text style={styles.moreButtonText}>{showMorePaintTypes ? "Thu gọn" : `Xem thêm ${paintTypes.length - 4} loại sơn`}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </ScrollView>
+
+          <View style={styles.modalFooter}>
+            <TouchableOpacity style={styles.clearButton} onPress={clearAllFilters}>
+              <Ionicons name="trash-outline" size={20} color={colors.fifth} />
+              <Text style={styles.clearButtonText}>Xóa tất cả</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.applyButton} onPress={() => setIsModalVisible(false)}>
+              <Ionicons name="checkmark-outline" size={20} color={colors.sixth} />
+              <Text style={styles.applyButtonText}>Áp dụng</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   return (
     <View style={styles.container}>
       {/* Header with Search and Filter */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
+        <TouchableOpacity onPress={() => router.replace("/home")}>
           <Ionicons name="chevron-back-circle-outline" size={28} color={colors.fifth} />
         </TouchableOpacity>
         <View style={styles.searchContainer}>
           <Ionicons name="search-outline" size={20} color={colors.fifth} />
-          <TextInput style={styles.searchInput} placeholder="Search nail designs..." placeholderTextColor={`${colors.fifth}80`} />
+          <TextInput style={styles.searchInput} placeholder="Tìm kiếm mẫu nail..." placeholderTextColor={`${colors.fifth}80`} />
         </View>
         <TouchableOpacity onPress={() => setIsModalVisible(true)}>
           <Ionicons name="options-outline" size={24} color={colors.fifth} />
         </TouchableOpacity>
       </View>
 
+      {renderTabs()}
+
       {/* Nail Designs Grid */}
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.preferencesContainer}>
-          <TouchableOpacity style={styles.headerRow} onPress={() => router.push("/(setup)/preferences")}>
-            <Text style={styles.titleText}>Click here to edit your preferences!</Text>
+          <TouchableOpacity style={styles.preferencesButton} onPress={() => router.push("/(setup)/preferences")}>
+            <View style={styles.preferencesContent}>
+              <View style={styles.preferencesLeft}>
+                <Ionicons name="person-circle-outline" size={24} color={colors.fifth} />
+                <View style={styles.preferencesTextContainer}>
+                  <Text style={styles.preferencesTitle}>Tùy chỉnh sở thích</Text>
+                  <Text style={styles.preferencesSubtitle}>Điều chỉnh các tùy chọn phù hợp với bạn</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={colors.fifth} />
+            </View>
           </TouchableOpacity>
         </View>
 
-        <View style={styles.gridContainer}>
-          {nailDesigns.map((design) => (
-            <TouchableOpacity key={design.id} style={styles.nailCard} onPress={() => router.push("./nails/[1]")}>
-              <Image source={design.image} style={styles.nailImage} />
-              <View style={styles.nailInfo}>
-                <Text style={styles.nailName} numberOfLines={1}>
-                  {design.name}
-                </Text>
-                <Text style={styles.nailPrice}>{design.price}</Text>
-                <View style={styles.nailDetails}>
-                  <View style={styles.detailItem}>
-                    <Ionicons name="time-outline" size={14} color={colors.fifth} />
-                    <Text style={styles.detailText}>{design.duration}</Text>
+        {loading ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={colors.fifth} />
+            <Text style={styles.loadingText}>Đang tải...</Text>
+          </View>
+        ) : (
+          <View style={styles.gridContainer}>
+            {nailDesigns.map((design) => (
+              <TouchableOpacity key={design.ID} style={styles.nailCard} onPress={() => router.replace(`/nails/${design.ID}`)}>
+                <Image
+                  source={{
+                    uri: design.Medias[0]?.ImageUrl || "https://firebasestorage.googleapis.com/v0/b/fir-realtime-database-49344.appspot.com/o/images%2Fnoimage.jpg?alt=media&token=8ffe560a-6aeb-4a34-8ebc-16693bb10a56&fbclid=IwY2xjawJJERpleHRuA2FlbQIxMAABHfHAoOuBqoR8wcxGYpyXgOUtSMbJ8Pr68s2NIHEAej3f-T6w8AyBaluMqg_aem_RGb79TPRss_OmtwOKp27aA"
+                  }}
+                  style={styles.nailImage}
+                />
+                <View style={styles.nailInfo}>
+                  <View style={styles.nailHeader}>
+                    <Ionicons name="color-palette-outline" size={16} color={colors.fifth} />
+                    <Text style={styles.nailName} numberOfLines={1}>
+                      {design.Name}
+                    </Text>
                   </View>
-                  <View style={styles.popularityContainer}>
-                    <Ionicons name="heart-outline" size={14} color={colors.fifth} />
-                    <Text style={styles.popularityText}>{design.popularity}</Text>
+                  <View style={styles.nailDetails}>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="heart-outline" size={14} color={colors.fifth} />
+                      <Text style={styles.detailLabel}>Trend:</Text>
+                      <Text style={styles.detailValue}>{design.TrendScore}</Text>
+                    </View>
+                    <View style={styles.detailItem}>
+                      <Ionicons name="star-outline" size={14} color={colors.fifth} />
+                      <Text style={styles.detailLabel}>Rating:</Text>
+                      <Text style={styles.detailValue}>{design.AverageRating.toFixed(1)}</Text>
+                    </View>
                   </View>
                 </View>
-                <View style={styles.locationContainer}>
-                  <Ionicons name="location-outline" size={14} color={colors.fifth} />
-                  <Text style={styles.locationText} numberOfLines={1}>
-                    {design.location}
-                  </Text>
-                </View>
-              </View>
-            </TouchableOpacity>
-          ))}
-        </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </ScrollView>
 
-      {/* Giữ nguyên phần Filter Modal như cũ */}
-      <Modal visible={isModalVisible} transparent={true} animationType="slide" onRequestClose={() => setIsModalVisible(false)}>
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Filter & Sort</Text>
-              <TouchableOpacity onPress={() => setIsModalVisible(false)}>
-                <Ionicons name="close" size={24} color={colors.fifth} />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false}>
-              {/* Sort Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Sort By</Text>
-                <View style={styles.radioGroup}>
-                  {sortOptions.map((option) => (
-                    <TouchableOpacity key={option} style={styles.radioOption} onPress={() => setSelectedSort(option)}>
-                      <View style={styles.radioButton}>{selectedSort === option && <View style={styles.radioButtonSelected} />}</View>
-                      <Text style={styles.radioText}>{option}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Divider */}
-              <View style={styles.divider} />
-
-              {/* Occasions Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Occasions</Text>
-                <View style={styles.filterOptions}>
-                  {occasions.map((item) => (
-                    <TouchableOpacity key={item} style={styles.filterOption}>
-                      <Text style={styles.filterOptionText}>{item}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-                {/* <TouchableOpacity style={styles.moreButton}>
-                  <Text style={styles.moreButtonText}>More</Text>
-                </TouchableOpacity> */}
-              </View>
-
-              {/* Price Range Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Price Range</Text>
-                <View style={styles.filterOptions}>
-                  {priceRanges.map((item) => (
-                    <TouchableOpacity key={item} style={styles.filterOption}>
-                      <Text style={styles.filterOptionText}>{item}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-
-              {/* Skin Tone Section */}
-              <View style={styles.filterSection}>
-                <Text style={styles.filterSectionTitle}>Skin Tone</Text>
-                <View style={styles.radioGroup}>
-                  {skinTones.map((tone) => (
-                    <TouchableOpacity key={tone} style={styles.radioOption}>
-                      <View style={styles.radioButton} />
-                      <Text style={styles.radioText}>{tone}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              </View>
-            </ScrollView>
-
-            <View style={styles.modalFooter}>
-              <TouchableOpacity style={styles.clearButton}>
-                <Text style={styles.clearButtonText}>Clear All</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.applyButton}>
-                <Text style={styles.applyButtonText}>Apply</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {renderFilterModal()}
     </View>
   );
 }
@@ -213,7 +369,7 @@ export default function Nails() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.seventh
+    backgroundColor: colors.sixth
   },
   header: {
     flexDirection: "row",
@@ -236,15 +392,88 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     color: colors.fifth
   },
+  tabsContainer: {
+    flexDirection: "row",
+    backgroundColor: colors.third,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.fourth
+  },
+  tab: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: colors.fourth
+  },
+  activeTab: {
+    backgroundColor: colors.fifth
+  },
+  tabText: {
+    fontSize: 14,
+    color: "#666",
+    fontWeight: "600"
+  },
+  activeTabText: {
+    color: colors.sixth
+  },
+  drawer: {
+    width: Dimensions.get("window").width * 0.8,
+    backgroundColor: colors.sixth
+  },
+  drawerContent: {
+    flex: 1,
+    backgroundColor: colors.sixth
+  },
+  drawerHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.fourth
+  },
+  drawerTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
+    color: colors.fifth
+  },
+  drawerScroll: {
+    flex: 1
+  },
+  drawerFooter: {
+    flexDirection: "row",
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.fourth
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 32
+  },
+  loadingText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: colors.fifth,
+    fontWeight: "500"
+  },
   gridContainer: {
     padding: 16,
     flexDirection: "row",
     flexWrap: "wrap",
-    justifyContent: "space-between" // Tạo khoảng cách đều giữa các cột
+    justifyContent: "space-between"
   },
   nailCard: {
-    width: "48%", // Đảm bảo 2 cột với khoảng cách giữa các card
-    backgroundColor: colors.fourth,
+    width: "48%",
+    backgroundColor: colors.third,
     borderRadius: 12,
     overflow: "hidden",
     shadowColor: "#000",
@@ -252,7 +481,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
-    marginBottom: 16 // Khoảng cách giữa các hàng
+    marginBottom: 16
   },
   nailImage: {
     width: "100%",
@@ -260,145 +489,70 @@ const styles = StyleSheet.create({
     resizeMode: "cover"
   },
   nailInfo: {
-    padding: 10
+    padding: 12
+  },
+  nailHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 8
   },
   nailName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: colors.fifth,
-    marginBottom: 4
-  },
-  nailPrice: {
+    flex: 1,
     fontSize: 16,
-    fontWeight: "700",
-    color: colors.fifth,
-    marginBottom: 8
+    fontWeight: "600",
+    color: colors.eigth
   },
   nailDetails: {
     flexDirection: "column",
-    gap: 8,
-    marginBottom: 8
+    gap: 8
   },
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4
-  },
-  detailText: {
-    fontSize: 12,
-    color: colors.fifth
-  },
-  locationContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4
-  },
-  locationText: {
-    fontSize: 12,
-    color: colors.fifth,
-    flex: 1
-  },
-  popularityContainer: {
-    flexDirection: "row",
-    alignItems: "center",
     gap: 4,
-    backgroundColor: `${colors.fifth}10`,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8
+    backgroundColor: `${colors.eigth}10`,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    alignSelf: "flex-start"
   },
-  popularityText: {
-    fontSize: 11,
-    color: colors.fifth
+  detailLabel: {
+    fontSize: 12,
+    color: colors.eigth,
+    fontWeight: "500"
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "flex-end"
-  },
-  modalContent: {
-    backgroundColor: colors.third,
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    padding: 20,
-    maxHeight: "80%"
-  },
-  modalHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 20
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.fifth
+  detailValue: {
+    fontSize: 12,
+    color: colors.eigth,
+    fontWeight: "600"
   },
   filterSection: {
-    marginBottom: 20
-  },
-  filterSectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: colors.fifth,
-    marginBottom: 10
+    marginBottom: 24
   },
   filterOptions: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 10
+    gap: 8
   },
   filterOption: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 20,
     borderWidth: 1,
-    borderColor: colors.fifth,
+    borderColor: colors.eigth,
     backgroundColor: "transparent"
   },
   filterOptionSelected: {
-    backgroundColor: colors.fifth
+    backgroundColor: colors.fifth,
+    borderColor: colors.fifth
   },
   filterOptionText: {
-    color: colors.fifth
+    color: colors.eigth,
+    fontSize: 14
   },
   filterOptionTextSelected: {
     color: colors.sixth
-  },
-  modalFooter: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: colors.fourth,
-    marginTop: 20
-  },
-  clearButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: colors.fifth,
-    marginRight: 10,
-    alignItems: "center"
-  },
-  applyButton: {
-    flex: 1,
-    padding: 15,
-    borderRadius: 10,
-    backgroundColor: colors.fifth,
-    marginLeft: 10,
-    alignItems: "center"
-  },
-  clearButtonText: {
-    color: colors.fifth,
-    fontSize: 16,
-    fontWeight: "bold"
-  },
-  applyButtonText: {
-    color: colors.sixth,
-    fontSize: 16,
-    fontWeight: "bold"
   },
   moreButton: {
     alignSelf: "flex-end",
@@ -408,56 +562,139 @@ const styles = StyleSheet.create({
   },
   moreButtonText: {
     color: colors.fifth,
-    fontWeight: "bold"
+    fontSize: 14,
+    fontWeight: "500"
   },
-  radioGroup: {
-    marginTop: 8
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "flex-end",
+    alignItems: "flex-end"
   },
-  radioOption: {
+  modalContent: {
+    width: "85%",
+    height: "100%",
+    backgroundColor: colors.sixth,
+    borderTopLeftRadius: 20,
+    borderBottomLeftRadius: 20,
+    padding: 20
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 20,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.fourth
+  },
+  modalTitleContainer: {
     flexDirection: "row",
     alignItems: "center",
-    marginVertical: 8
+    gap: 8
   },
-  radioButton: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 2,
-    borderColor: colors.fifth,
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10
-  },
-  radioButtonSelected: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: colors.fifth
-  },
-  radioText: {
-    fontSize: 16,
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: "bold",
     color: colors.fifth
   },
-  divider: {
-    height: 1,
-    backgroundColor: colors.fourth,
-    marginVertical: 20
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    marginBottom: 12
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: colors.fifth
+  },
+  modalScroll: {
+    flex: 1
+  },
+  modalFooter: {
+    flexDirection: "row",
+    padding: 16,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: colors.fourth
+  },
+  clearButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 15,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: colors.fifth,
+    marginRight: 10
+  },
+  applyButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    padding: 15,
+    borderRadius: 10,
+    backgroundColor: colors.fifth,
+    marginLeft: 10
+  },
+  clearButtonText: {
+    color: colors.fifth,
+    fontSize: 16,
+    fontWeight: "600"
+  },
+  applyButtonText: {
+    color: colors.sixth,
+    fontSize: 16,
+    fontWeight: "600"
   },
   preferencesContainer: {
-    paddingLeft: 20,
+    padding: 16,
     backgroundColor: colors.third
   },
-
-  headerRow: {
-    flexDirection: "row", // Sắp xếp theo hàng ngang
-    justifyContent: "space-between", // Đẩy các phần tử về hai bên
-    alignItems: "center" // Căn giữa theo chiều dọc
+  preferencesButton: {
+    backgroundColor: colors.fourth,
+    borderRadius: 12,
+    padding: 16
   },
-
-  titleText: {
-    fontSize: 18,
+  preferencesContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between"
+  },
+  preferencesLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12
+  },
+  preferencesTextContainer: {
+    flex: 1
+  },
+  preferencesTitle: {
+    fontSize: 16,
     fontWeight: "600",
     color: colors.fifth,
-    flexShrink: 1 // Đảm bảo tiêu đề không tràn ra ngoài
+    marginBottom: 4
+  },
+  preferencesSubtitle: {
+    fontSize: 14,
+    color: "#666"
   }
 });
+
+const getContrastColor = (hexColor: string) => {
+  // Convert hex to RGB
+  const r = parseInt(hexColor.slice(1, 3), 16);
+  const g = parseInt(hexColor.slice(3, 5), 16);
+  const b = parseInt(hexColor.slice(5, 7), 16);
+
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+  // Return white for dark colors, black for light colors
+  return luminance > 0.5 ? "#000000" : "#FFFFFF";
+};

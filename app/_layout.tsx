@@ -5,7 +5,6 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
 import customTheme from "@/assets/colors/customTheme";
-import { useAuth } from "@/hooks/useAuth";
 
 const theme = {
   ...DefaultTheme,
@@ -21,9 +20,6 @@ const theme = {
 };
 
 export default function RootLayout() {
-  const { isAuthenticated } = useAuth();
-  console.log("isAuthenticated", isAuthenticated);
-
   return (
     <ThemeProvider value={theme}>
       <Stack

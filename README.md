@@ -1,50 +1,123 @@
-# Welcome to your Expo app 👋
+# AI-Enhanced Nail Service Booking System (INBS)
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+## Project Overview
+**English Name**: AI-Enhanced Nail Service Booking System  
+**Vietnamese Name**: Hệ thống đặt lịch làm nail thông minh ứng dụng trí tuệ nhân tạo  
+**Abbreviation**: INBS
 
-## Get started
+## Project Context
+The nail service booking process faces several key challenges:
+- Customers struggle to choose nail designs that suit them without visualization
+- Booking time slots is often inefficient, leading to long wait times
+- Customers have difficulty describing their desired designs to nail artists
+- Peak hours create booking conflicts and customer dissatisfaction
+- Previous customer preferences are not effectively used for future bookings
+- Last-minute cancellations create scheduling gaps and revenue loss
+
+## Proposed Solutions
+- AI-powered virtual nail try-on system to preview designs
+- Smart booking system with intelligent time slot suggestions
+- AI-based service time estimation for accurate scheduling
+- Automated booking optimization for peak hours
+- Design preference learning and recommendation system
+- Intelligent rebooking system for cancelled appointments
+
+## Functional Requirements
+
+### Customer Mobile App
+- User registration with preference setup
+- Virtual nail try-on with AR technology
+- AI design recommendations based on:
+  - Past selections
+  - Current trends
+  - Skin tone
+  - Season/occasion
+- Intelligent booking features:
+  - Smart time slot suggestions
+  - Service duration estimation
+  - Automatic artist matching
+  - Waitlist management
+- Automated reminder system
+- Quick rebooking of favorite services
+- In-app secure payment
+- Design saving and sharing
+
+### Artist Portal (Web)
+- Real-time booking notifications
+- Client preference viewing
+- Service timing tracking for better future estimates
+- Next appointment preview
+- Break time management
+- Simple availability updates
+
+### Admin Booking Management
+- Real-time booking dashboard
+- Artist availability management
+- Service time slot configuration
+- Booking analytics for optimization
+- Customer preference insights
+- Waitlist management
+
+## Technical Architecture
+
+### Frontend
+- Mobile App: React Native with Expo
+- UI Components: React Native elements, Skia for graphics
+- Navigation: Expo Router
+- State Management: Context API with AsyncStorage
+
+### Features Implemented
+1. **Authentication System**
+   - User registration and login
+   - OTP verification
+
+2. **Virtual Nail Try-on**
+   - Camera integration with AR technology
+   - Real-time nail design preview
+
+3. **Booking System**
+   - Store selection with location-based recommendations
+   - Date and time slot selection
+   - AI-powered service duration prediction
+   - Artist matching and selection
+
+4. **Design Selection**
+   - Browsable nail design catalog
+   - Favorites system
+   - Design recommendations
+
+5. **Scheduling**
+   - Smart time slot suggestions
+   - Service duration estimation
+   - Automatic artist matching
+
+## Getting Started
 
 1. Install dependencies
-
    ```bash
    npm install
    ```
 
 2. Start the app
-
    ```bash
-    npx expo start
+   npx expo start
    ```
 
-In the output, you'll find options to open the app in a
+## Project Structure
+- `/app` - Main application screens and routes
+  - `/(authenticated)` - Screens for logged-in users
+  - `/(unauthenticated)` - Authentication screens
+  - `/nails` - Nail service specific screens
+- `/components` - Reusable UI components
+- `/services` - API and business logic
+- `/assets` - Images, icons, and other static resources
+- `/utils` - Helper functions and utilities
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+## Technologies Used
+- React Native & Expo
+- TypeScript
+- TensorFlow.js for AI models
+- Firebase Authentication
+- Expo Camera for AR features
+- React Native Skia for graphics processing
+- Axios for API communication

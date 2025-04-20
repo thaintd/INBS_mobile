@@ -77,7 +77,7 @@ export default function Confirmation() {
 
         {/* Service Package */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Service Package</Text>
+          <Text style={styles.sectionTitle}>Service Combo</Text>
           <View style={styles.packageCard}>
             <View style={styles.packageHeader}>
               <Text style={styles.packageName}>{serviceType.name}</Text>
@@ -170,7 +170,7 @@ const styles = StyleSheet.create({
   },
   designCard: {
     flexDirection: "row",
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 12,
     marginBottom: 24
@@ -188,13 +188,13 @@ const styles = StyleSheet.create({
   designName: {
     fontSize: 18,
     fontWeight: "600",
-    color: colors.fifth,
+    color: colors.eigth,
     marginBottom: 4
   },
   designPrice: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.fifth,
+    color: colors.eigth,
     marginBottom: 8
   },
   designMeta: {
@@ -204,7 +204,7 @@ const styles = StyleSheet.create({
   },
   designMetaText: {
     fontSize: 14,
-    color: colors.fifth
+    color: colors.eigth
   },
   section: {
     marginBottom: 24
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     marginBottom: 12
   },
   packageCard: {
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 16
   },
@@ -229,12 +229,12 @@ const styles = StyleSheet.create({
   packageName: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.fifth
+    color: colors.eigth
   },
   packagePrice: {
     fontSize: 16,
     fontWeight: "700",
-    color: colors.fifth
+    color: colors.eigth
   },
   servicesList: {
     gap: 8
@@ -246,20 +246,20 @@ const styles = StyleSheet.create({
   },
   serviceText: {
     fontSize: 14,
-    color: colors.fifth
+    color: colors.eigth
   },
   addonItem: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 16,
     marginBottom: 8
   },
   addonName: {
     fontSize: 16,
-    color: colors.fifth
+    color: colors.eigth
   },
   addonPrice: {
     fontSize: 16,
@@ -267,7 +267,7 @@ const styles = StyleSheet.create({
     color: colors.fifth
   },
   timeCard: {
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 16,
     gap: 12
@@ -279,13 +279,13 @@ const styles = StyleSheet.create({
   },
   timeText: {
     fontSize: 16,
-    color: colors.fifth
+    color: colors.eigth
   },
   totalSection: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 16,
     marginBottom: 24
@@ -302,7 +302,6 @@ const styles = StyleSheet.create({
   },
   bottomAction: {
     padding: 16,
-    paddingBottom: 32,
     backgroundColor: colors.third,
     borderTopWidth: 1,
     borderTopColor: colors.fourth

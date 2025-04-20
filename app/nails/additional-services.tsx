@@ -71,7 +71,7 @@ export default function AdditionalServices() {
 
         {/* Service Type Selection */}
         <View style={styles.typeSection}>
-          <Text style={styles.sectionTitle}>Choose Combo</Text>
+          <Text style={styles.sectionTitle}>Choose Service</Text>
           {serviceTypes.map((type) => (
             <TouchableOpacity key={type.id} style={[styles.typeCard, selectedType === type.id && styles.selectedTypeCard]} onPress={() => setSelectedType(type.id)}>
               <View style={styles.typeHeader}>
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   },
   selectedDesign: {
     flexDirection: "row",
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 12,
     marginBottom: 24
@@ -178,12 +178,12 @@ const styles = StyleSheet.create({
   designName: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.fifth,
+    color: colors.eigth,
     marginBottom: 4
   },
   designPrice: {
     fontSize: 15,
-    color: colors.fifth
+    color: colors.eigth
   },
   sectionTitle: {
     fontSize: 18,
@@ -195,13 +195,13 @@ const styles = StyleSheet.create({
     marginBottom: 24
   },
   typeCard: {
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12
   },
   selectedTypeCard: {
-    backgroundColor: `${colors.fifth}10`
+    backgroundColor: `${colors.fourth}`
   },
   typeHeader: {
     flexDirection: "row",
@@ -212,37 +212,37 @@ const styles = StyleSheet.create({
   typeName: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.fifth,
+    color: colors.eigth,
     marginBottom: 4
   },
   typePrice: {
     fontSize: 15,
-    color: colors.fifth
+    color: colors.eigth
   },
   radioButton: {
     width: 20,
     height: 20,
     borderRadius: 10,
     borderWidth: 2,
-    borderColor: colors.fifth,
+    borderColor: colors.eigth,
     justifyContent: "center",
     alignItems: "center"
   },
   radioButtonSelected: {
-    borderColor: colors.fifth
+    borderColor: colors.eigth
   },
   radioInner: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: colors.fifth
+    backgroundColor: colors.eigth
   },
   servicesList: {
     marginTop: 8
   },
   serviceItem: {
     fontSize: 14,
-    color: colors.fifth,
+    color: colors.eigth,
     marginBottom: 4
   },
   addonsSection: {
@@ -251,13 +251,13 @@ const styles = StyleSheet.create({
   addonCard: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: colors.fourth,
+    backgroundColor: colors.third,
     borderRadius: 12,
     padding: 16,
     marginBottom: 12
   },
   selectedAddonCard: {
-    backgroundColor: `${colors.fifth}10`
+    backgroundColor: `${colors.fourth}`
   },
   addonInfo: {
     flex: 1,
@@ -266,34 +266,32 @@ const styles = StyleSheet.create({
   addonName: {
     fontSize: 16,
     fontWeight: "600",
-    color: colors.fifth,
+    color: colors.eigth,
     marginBottom: 4
   },
   addonDescription: {
     fontSize: 14,
-    color: `${colors.fifth}80`,
+    color: `${colors.eigth}80`,
     marginBottom: 4
   },
   addonPrice: {
     fontSize: 15,
     fontWeight: "500",
-    color: colors.fifth
+    color: colors.eigth
   },
   checkbox: {
     width: 24,
     height: 24,
-
     borderWidth: 2,
-    borderColor: colors.fifth,
+    borderColor: colors.eigth,
     justifyContent: "center",
     alignItems: "center"
   },
   checkboxSelected: {
-    backgroundColor: colors.fifth
+    backgroundColor: colors.eigth
   },
   bottomAction: {
     padding: 16,
-    paddingBottom: 32,
     backgroundColor: colors.third,
     borderTopWidth: 1,
     borderTopColor: colors.fourth
@@ -307,12 +305,12 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 25,
     alignItems: "center",
-    backgroundColor: colors.fourth
+    backgroundColor: colors.fifth
   },
   backText: {
     fontSize: 18,
     fontWeight: "600",
-    color: colors.fifth
+    color: colors.sixth
   },
   continueButton: {
     flex: 1,

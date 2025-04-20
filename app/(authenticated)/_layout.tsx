@@ -5,15 +5,15 @@ import { View } from "react-native";
 import colors from "@/assets/colors/colors";
 
 const tabsData: { name: string; title: string; icon: "home" | "hand-left" | "person" | "heart" | "time" }[] = [
-  { name: "index", title: "Home", icon: "home" },
-  { name: "fourth", title: "Nail", icon: "hand-left" },
-  { name: "profile", title: "Profile", icon: "person" },
-  { name: "favorite", title: "Favorite", icon: "heart" },
-  { name: "fifth", title: "Schedule", icon: "time" }
+  { name: "home", title: "Home", icon: "home-outline" },
+  { name: "fourth", title: "Nail", icon: "hand-left-outline" },
+  { name: "profile", title: "Profile", icon: "person-outline" },
+  { name: "favorite", title: "Favorite", icon: "heart-outline" },
+  { name: "fifth", title: "Schedule", icon: "time-outline" }
 ];
 
 export default function TabLayout() {
-  const [selectedTab, setSelectedTab] = useState("index");
+  const [selectedTab, setSelectedTab] = useState("home");
 
   const reorderedTabs = [...tabsData.filter((tab) => tab.name !== selectedTab)];
   reorderedTabs.splice(2, 0, tabsData.find((tab) => tab.name === selectedTab) || tabsData[0]);
@@ -23,13 +23,12 @@ export default function TabLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: colors.fifth,
-        tabBarInactiveTintColor: `${colors.fifth}80`,
+        tabBarInactiveTintColor: `${colors.eigth}`,
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: "500"
+          fontSize: 12
         },
         tabBarStyle: {
-          backgroundColor: colors.first,
+          backgroundColor: colors.sixth,
           height: 55,
           paddingBottom: 10
         }
@@ -47,7 +46,7 @@ export default function TabLayout() {
                 style={{
                   alignItems: "center",
                   justifyContent: "center",
-                  backgroundColor: selectedTab === tab.name ? colors.second : "transparent",
+                  backgroundColor: selectedTab === tab.name ? colors.third : "transparent",
                   borderRadius: size,
                   padding: 10,
                   transform: selectedTab === tab.name ? [{ translateY: -size * 0.75 }] : [],
@@ -55,7 +54,7 @@ export default function TabLayout() {
                   height: size * 2
                 }}
               >
-                <Ionicons name={tab.icon} size={size} color={selectedTab === tab.name ? colors.fifth : colors.fifth} />
+                <Ionicons name={tab.icon} size={size} color={selectedTab === tab.name ? colors.fifth : colors.eigth} />
               </View>
             )
           }}
