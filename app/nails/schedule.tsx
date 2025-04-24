@@ -119,22 +119,50 @@ const StoreSelectionScreen = () => {
 
   useEffect(() => {
     const handleSuggestTimeSlots = async () => {
-      if (!selectedStore || !selectedDate) return;
+      if (!selectedStore || !selectedDate) {
+        console.log("Missing required data:", { selectedStore, selectedDate });
+        return;
+      }
       
       try {
         const formData = new FormData();
         formData.append('date', selectedDate);
         formData.append('storeId', selectedStore.ID);
 
-        const res = await axios.post(`https://inbsapi-d9hhfmhsapgabrcz.southeastasia-01.azurewebsites.net/api/Booking/SuggestTimeSlots`, formData, {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          }
+        console.log("Sending request to suggest time slots:", {
+          date: selectedDate,
+          storeId: selectedStore.ID
         });
+
+        const res = await axios.post(
+          `https://inbsapi-d9hhfmhsapgabrcz.southeastasia-01.azurewebsites.net/api/Booking/SuggestTimeSlots`, 
+          formData,
+          {
+            headers: {
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+
+        if (!res.data || !Array.isArray(res.data)) {
+          console.error("Invalid response format:", res.data);
+          return;
+        }
+
         console.log("SuggestTimeSlots response:", res.data);
         setSuggestedTimeSlots(res.data);
       } catch (error) {
-        console.error("Error fetching suggested time slots:", error);
+        if (axios.isAxiosError(error)) {
+          console.error("API Error:", {
+            status: error.response?.status,
+            data: error.response?.data,
+            message: error.message
+          });
+        } else {
+          console.error("Unexpected error:", error);
+        }
+        // Set empty array on error to prevent UI issues
+        setSuggestedTimeSlots([]);
       }
     };
 
@@ -142,7 +170,10 @@ const StoreSelectionScreen = () => {
   }, [selectedStore, selectedDate]);
 
   const isSuggestedTimeSlot = (time: string) => {
-    return suggestedTimeSlots.some(slot => slot.start === time);
+    return suggestedTimeSlots.some(slot => {
+      const slotTime = slot.start.split(':')[0] + ':00';
+      return slotTime === time;
+    });
   };
 
   const fetchArtists = async () => {
@@ -365,6 +396,10 @@ const StoreSelectionScreen = () => {
                   <Ionicons name="location-outline" size={16} color={colors.fifth} />
                   <Text style={styles.addressText}>{item.Description}</Text>
                 </View>
+                <View style={styles.storeRating}>
+                  <Ionicons name="star" size={16} color={colors.fifth} />
+                  <Text style={styles.ratingText}>{item.AverageRating.toFixed(1)}</Text>
+                </View>
                 {distance !== null && (
                   <View style={styles.distanceContainer}>
                     <Ionicons name="navigate-outline" size={16} color={colors.fifth} />
@@ -485,6 +520,7 @@ const StoreSelectionScreen = () => {
               {generateTimeSlots().map((time) => {
                 const isSuggested = isSuggestedTimeSlot(time);
                 const isPast = isPastTime(time);
+                console.log("Time slot:", { time, isSuggested, isPast }); // Debug log
                 return (
                   <TouchableOpacity 
                     key={time} 
@@ -727,6 +763,21 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: "#f0f0f0"
   },
+  storeRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "#f5f5f5",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    alignSelf: "flex-start"
+  },
+  ratingText: {
+    fontSize: 14,
+    fontWeight: "500",
+    color: "#333"
+  },
   backButton: {
     width: 40,
     height: 40,
@@ -896,10 +947,13 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 8,
     width: "31%",
-    minWidth: 0
+    minWidth: 0,
+    borderWidth: 1,
+    borderColor: "#f5f5f5"
   },
   selectedTime: {
-    backgroundColor: colors.fifth
+    backgroundColor: colors.fifth,
+    borderColor: colors.fifth
   },
   timeText: {
     fontSize: 14,
@@ -1166,10 +1220,12 @@ const styles = StyleSheet.create({
   },
   suggestedTime: {
     backgroundColor: '#E3F2FD',
-    borderColor: colors.fifth
+    borderColor: colors.fifth,
+    borderWidth: 1
   },
   suggestedTimeText: {
-    color: colors.fifth
+    color: colors.fifth,
+    fontWeight: "600"
   },
   suggestedInfo: {
     flexDirection: 'row',
@@ -1178,11 +1234,14 @@ const styles = StyleSheet.create({
     marginTop: 8,
     padding: 8,
     backgroundColor: '#E3F2FD',
-    borderRadius: 8
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.fifth
   },
   suggestedText: {
     fontSize: 14,
-    color: colors.fifth
+    color: colors.fifth,
+    fontWeight: "500"
   },
   disabledTime: {
     backgroundColor: '#f5f5f5',

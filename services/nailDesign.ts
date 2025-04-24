@@ -59,7 +59,7 @@ $orderby=trendscore desc &$top=5&$select=id,name,trendscore,averageRating%20
       const allServices = Object.values(nailDesignServices).flat();
       const serviceIds = [...new Set(allServices.map((service) => service?.ServiceId))]; // Lọc ID duy nhất
 
-      const serviceRequests = serviceIds.map((serviceId) => api.get(`/odata/service?$filter=id eq ${serviceId}&$select=id,name,imageUrl,price,isAdditional,averageDuration,ImageDescriptionUrl,description`));
+      const serviceRequests = serviceIds.map((serviceId) => api.get(`/odata/service?$filter=id eq ${serviceId}&$select=id,name,imageUrl,price,averageDuration,ImageDescriptionUrl,description`));
       const servicesRes = await Promise.all(serviceRequests);
       const services = servicesRes.map((res) => res.data.value[0]);
 

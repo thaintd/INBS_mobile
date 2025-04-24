@@ -207,26 +207,25 @@ export default function Home() {
     };
     handleGetNailDesignRecommend();
   }, []);
-  useEffect(() => {
-    const handleGetBeautyServices = async () => {
-      try {
-        setLoading(true);
-        const res = await service.getService();
-        console.log(res);
-        if (Array.isArray(res)) {
-          setBeautyServices(res);
-        } else {
-          console.error("Unexpectedaa response format:", res);
-        }
-      } catch (error) {
-        console.error("Failed to load beauty services:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    handleGetBeautyServices();
-    console.log(beautyServices);
-  }, []);
+  // useEffect(() => {
+  //   const handleGetBeautyServices = async () => {
+  //     try {
+  //       setLoading(true);
+  //       const res = await service.getService();
+  //       if (Array.isArray(res)) {
+  //         setBeautyServices(res);
+  //       } else {
+  //         console.error("Unexpectedaa response format:", res);
+  //       }
+  //     } catch (error) {
+  //       console.error("Failed to load beauty services:", error);
+  //     } finally {
+  //       setLoading(false);
+  //     }
+  //   };
+  //   handleGetBeautyServices();
+  //   console.log(beautyServices);
+  // }, []);
 
   const getCartCount = async () => {
     try {
@@ -330,14 +329,14 @@ export default function Home() {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        {/* <View style={styles.greetingContainer}>
-          <LottieView
+      <View style={styles.greetingContainer}>
+          {/* <LottieView
             source={require("../../assets/hi.json")}
             autoPlay
             loop
             style={styles.waveAnimation}
-          />
-        </View> */}
+          /> */}
+        </View>
         <View style={styles.iconsContainer}>
           <TouchableOpacity>
             <Ionicons name="notifications-outline" size={24} color={colors.fifth} />

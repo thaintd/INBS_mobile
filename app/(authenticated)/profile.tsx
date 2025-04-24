@@ -190,6 +190,7 @@ export default function Profile() {
               </View>
               <TextInput
                 style={styles.input}
+                editable={false}
                 value={phoneNumber}
                 placeholder="Enter phone number"
                 placeholderTextColor="#999"

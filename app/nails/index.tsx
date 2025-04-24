@@ -42,6 +42,7 @@ export default function Nails() {
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
   const [selectedColors, setSelectedColors] = useState<string[]>([]);
   const [showMoreColors, setShowMoreColors] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchOptions = async () => {
@@ -66,6 +67,14 @@ export default function Nails() {
         // Build OData query
         let query = "/odata/design?$select=id,name,trendscore,averageRating,createdAt&$expand=medias($orderby=numerialOrder asc;$top=1;$select=imageUrl)";
 
+        // Build filter conditions
+        const filters = ["isDeleted eq false"];
+
+        // Add search filter if searchQuery exists
+        if (searchQuery) {
+          filters.push(`contains(tolower(name),tolower('${searchQuery}'))`);
+        }
+
         // Add sorting first
         switch (activeTab) {
           case "newest":
@@ -80,8 +89,6 @@ export default function Nails() {
         }
 
         // Add filter conditions
-        const filters = ["isDeleted eq false"];
-
         if (selectedOccasions.length > 0) {
           filters.push(`preferences/any(p: p/preferenceType eq 1 and p/preferenceId in (${selectedOccasions.join(",")}))`);
         }
@@ -98,9 +105,12 @@ export default function Nails() {
           filters.push(`preferences/any(p: p/preferenceType eq 0 and p/preferenceId in (${selectedColors.join(",")}))`);
         }
 
+        // Combine all filters with 'and'
         if (filters.length > 0) {
           query += `&$filter=${filters.join(" and ")}`;
         }
+
+        console.log("Query:", query); // Debug log
 
         const response = await api.get(query);
         if (Array.isArray(response.data.value)) {
@@ -113,7 +123,7 @@ export default function Nails() {
       }
     };
     handleGetNailDesign();
-  }, [activeTab, sortDirection, selectedOccasions, selectedSkintones, selectedPaintTypes, selectedColors, selectedPriceRange]);
+  }, [activeTab, sortDirection, selectedOccasions, selectedSkintones, selectedPaintTypes, selectedColors, selectedPriceRange, searchQuery]);
 
   const renderTabs = () => (
     <View style={styles.tabsContainer}>
@@ -294,7 +304,13 @@ export default function Nails() {
         </TouchableOpacity>
         <View style={styles.searchContainer}>
           <Ionicons name="search-outline" size={20} color={colors.fifth} />
-          <TextInput style={styles.searchInput} placeholder="Tìm kiếm mẫu nail..." placeholderTextColor={`${colors.fifth}80`} />
+          <TextInput 
+            style={styles.searchInput} 
+            placeholder="Tìm kiếm mẫu nail..." 
+            placeholderTextColor={`${colors.fifth}80`}
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
         </View>
         <TouchableOpacity onPress={() => setIsModalVisible(true)}>
           <Ionicons name="options-outline" size={24} color={colors.fifth} />
@@ -324,6 +340,16 @@ export default function Nails() {
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={colors.fifth} />
             <Text style={styles.loadingText}>Đang tải...</Text>
+          </View>
+        ) : nailDesigns.length === 0 ? (
+          <View style={styles.noResultsContainer}>
+            <Ionicons name="search-outline" size={48} color={colors.fifth} />
+            <Text style={styles.noResultsTitle}>Không tìm thấy kết quả</Text>
+            <Text style={styles.noResultsSubtitle}>
+              {searchQuery 
+                ? "Không có mẫu nail nào phù hợp với từ khóa tìm kiếm của bạn"
+                : "Không có mẫu nail nào phù hợp với bộ lọc hiện tại"}
+            </Text>
           </View>
         ) : (
           <View style={styles.gridContainer}>
@@ -385,12 +411,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.fourth,
     borderRadius: 25,
     paddingHorizontal: 16,
-    height: 40
+    height: 40,
+    marginHorizontal: 12
   },
   searchInput: {
     flex: 1,
     marginLeft: 8,
-    color: colors.fifth
+    color: colors.fifth,
+    fontSize: 14
   },
   tabsContainer: {
     flexDirection: "row",
@@ -683,6 +711,26 @@ const styles = StyleSheet.create({
   preferencesSubtitle: {
     fontSize: 14,
     color: "#666"
+  },
+  noResultsContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 32,
+    marginTop: 32
+  },
+  noResultsTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: colors.fifth,
+    marginTop: 16,
+    marginBottom: 8
+  },
+  noResultsSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    lineHeight: 20
   }
 });
 
