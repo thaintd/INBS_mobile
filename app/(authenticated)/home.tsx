@@ -330,12 +330,12 @@ export default function Home() {
     <View style={styles.container}>
       <View style={styles.header}>
       <View style={styles.greetingContainer}>
-          {/* <LottieView
+          <LottieView
             source={require("../../assets/hi.json")}
             autoPlay
             loop
             style={styles.waveAnimation}
-          /> */}
+          />
         </View>
         <View style={styles.iconsContainer}>
           <TouchableOpacity>

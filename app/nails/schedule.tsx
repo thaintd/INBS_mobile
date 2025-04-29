@@ -177,17 +177,29 @@ const StoreSelectionScreen = () => {
   };
 
   const fetchArtists = async () => {
-    if (!selectedStore || !selectedDate || !selectedTime) return;
+    if (!selectedStore || !selectedDate || !selectedTime) return null;
 
     setLoadingStates(prev => ({ ...prev, fetchingArtists: true }));
     try {
-      const apiUrl = `https://inbsapi-d9hhfmhsapgabrcz.southeastasia-01.azurewebsites.net/odata/artistStore?$filter=storeId eq ${selectedStore.ID} and ${selectedTime} ge startTime and ${selectedTime} le endTime and ${selectedDate} eq workingDate
-      &$select=artistId,storeId,workingDate,endTime,startTime
-      &$expand=store($select=id),artist($select=yearsOfExperience,level,id,averageRating;$expand=user($select=fullName,imageUrl))`;
-      const response = await api.get(apiUrl);
-      setArtists(response.data.value);
+      const formData = new FormData();
+      formData.append('storeId', selectedStore.ID);
+      formData.append('date', selectedDate);
+      formData.append('time', selectedTime);
+      if (customerSelectedId) {
+        formData.append('customerSelectedId', customerSelectedId);
+      }
+
+      const response = await api.post("/api/Booking/SuggestArtist", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      console.log("AAAAAAAAAAAAAAAAAA", response)
+      setArtists(response.data);
+      return response.data;
     } catch (error) {
       console.error("Error fetching artists:", error);
+      return null;
     } finally {
       setLoadingStates(prev => ({ ...prev, fetchingArtists: false }));
     }
@@ -587,7 +599,7 @@ const StoreSelectionScreen = () => {
             ) : (
               <FlatList
                 data={artists}
-                keyExtractor={(item) => item.Artist.ID}
+                keyExtractor={(item) => item.id}
                 renderItem={renderArtistCard}
                 ListEmptyComponent={
                   <View style={styles.emptyContainer}>
@@ -671,20 +683,21 @@ const StoreSelectionScreen = () => {
   );
 
   const renderArtistCard = ({ item }: { item: ArtistStore }) => {
-    const artist = item.Artist;
+    const artist = item;
+    console.log("artist", artist)
     return (
       <View style={styles.artistCard}>
         <View style={styles.artistHeader}>
-          <Image source={{ uri: artist.User.ImageUrl }} style={styles.artistImage} />
+          <Image source={{ uri: artist.user.imageUrl }} style={styles.artistImage} />
           <View style={styles.artistInfo}>
-            <Text style={styles.artistName}>{artist.User.FullName}</Text>
+            <Text style={styles.artistName}>{artist.user.fullName}</Text>
             <View style={styles.artistLevel}>
               <Ionicons name="ribbon-outline" size={16} color={colors.fifth} />
-              <Text style={styles.artistLevelText}>Level: {artist.Level}</Text>
+              <Text style={styles.artistLevelText}>Level: {artist.level}</Text>
             </View>
             <View style={styles.artistRating}>
               <Ionicons name="star" size={16} color={colors.fifth} />
-              <Text style={styles.artistRatingText}>Rating: {artist.AverageRating.toFixed(1)}</Text>
+              <Text style={styles.artistRatingText}>Rating: {artist.averageRating.toFixed(1)}</Text>
             </View>
           </View>
 
@@ -692,7 +705,7 @@ const StoreSelectionScreen = () => {
         <View style={styles.artistDetails}>
           <View style={styles.detailItem}>
             <Ionicons name="briefcase-outline" size={16} color={colors.fifth} />
-            <Text style={styles.detailText}>{artist.YearsOfExperience} năm kinh nghiệm</Text>
+            <Text style={styles.detailText}>{artist.yearsOfExperience} năm kinh nghiệm</Text>
           </View>
           <TouchableOpacity onPress={() => handleArtistSelect(item)} style={[styles.bookButton, loadingStates.fetchingArtists && styles.bookButtonDisabled]} disabled={loadingStates.fetchingArtists}>
             <Ionicons name="calendar-outline" size={20} color="#fff" />
