@@ -200,7 +200,7 @@ export default function ServiceDetail() {
   };
 
   const openWebPage = () => {
-    const url = "https://192.168.51.92:5000"; // Thay bằng URL trang web của bạn
+    const url = "https://192.168.1.3:5000"; // Thay bằng URL trang web của bạn
     Linking.openURL(url);
   };
 

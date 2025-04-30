@@ -351,11 +351,11 @@ const StoreSelectionScreen = () => {
       const predictEndTime = await handlePredict();
       console.log(predictEndTime);
       const formData = new FormData();
-      formData.append("ServiceDate", selectedArtist.WorkingDate);
+      formData.append("ServiceDate", selectedDate || "");
       formData.append("StartTime", selectedTime || "");
       formData.append("CustomerSelectedId", customerSelectedId || "");
-      formData.append("ArtistId", selectedArtist.ArtistId);
-      formData.append("StoreId", selectedArtist.StoreId);
+      formData.append("ArtistId", selectedArtist.id);
+      formData.append("StoreId", selectedStore?.ID);
       if (predictEndTime) {
         formData.append("EstimateDuration", predictEndTime.toString());
       }
@@ -370,7 +370,7 @@ const StoreSelectionScreen = () => {
           params: {
             date: selectedDate,
             time: selectedTime,
-            artistName: selectedArtist.Artist.User.FullName,
+            artistName: selectedArtist.user.fullName,
             predictEndTime: predictEnd
           }
         });
@@ -624,6 +624,7 @@ const StoreSelectionScreen = () => {
   };
 
   const renderConfirmationModal = () => (
+    console.log("showConfirmation", selectedArtist),
     <Modal visible={showConfirmation} transparent animationType="fade">
       <View style={styles.modalOverlay}>
         <View style={styles.modalContent}>
@@ -663,7 +664,7 @@ const StoreSelectionScreen = () => {
               <Ionicons name="person-outline" size={20} color={colors.fifth} />
               <View style={styles.confirmationText}>
                 <Text style={styles.confirmationLabel}>Artist</Text>
-                <Text style={styles.confirmationValue}>{selectedArtist?.Artist.User.FullName}</Text>
+                <Text style={styles.confirmationValue}>{selectedArtist?.user.fullName}</Text>
               </View>
             </View>
           </View>
@@ -707,6 +708,13 @@ const StoreSelectionScreen = () => {
             <Ionicons name="briefcase-outline" size={16} color={colors.fifth} />
             <Text style={styles.detailText}>{artist.yearsOfExperience} năm kinh nghiệm</Text>
           </View>
+          {artist.isBusy && (
+          <Text style={styles.busyNote}>
+            Thợ đang bận, bạn sẽ được thêm vào danh sách chờ nếu chọn thợ này 
+          </Text>
+        )}
+          
+
           <TouchableOpacity onPress={() => handleArtistSelect(item)} style={[styles.bookButton, loadingStates.fetchingArtists && styles.bookButtonDisabled]} disabled={loadingStates.fetchingArtists}>
             <Ionicons name="calendar-outline" size={20} color="#fff" />
             <Text style={styles.bookButtonText}>{loadingStates.fetchingArtists ? "Đang xử lý..." : "Đặt lịch"}</Text>
@@ -760,6 +768,13 @@ const StoreSelectionScreen = () => {
 export default StoreSelectionScreen;
 
 const styles = StyleSheet.create({
+  busyNote: {
+    color: 'red',
+    fontStyle: 'italic',
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  
   headerAbsolute: {
     position: "absolute",
     left: 0,
